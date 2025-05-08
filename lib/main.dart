@@ -7,7 +7,6 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'login_2_screen.dart';
-// Import all screens
 import 'detail_layanan.dart';
 import 'profil_screen.dart';
 import 'riwayat_screen.dart'; // Import the new screen
