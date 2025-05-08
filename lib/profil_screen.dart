@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'login_2_screen.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
@@ -33,17 +35,15 @@ class _ProfilScreenState extends State<ProfilScreen> {
     _loadTema();
   }
 
-  // Load tema dari SharedPreferences
   Future<void> _loadTema() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
       indexWarna = prefs.getInt('indexWarna') ?? 0;
     });
   }
 
-  // Simpan tema ke SharedPreferences
   Future<void> _saveTema(int index) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('indexWarna', index);
   }
 
@@ -53,24 +53,21 @@ class _ProfilScreenState extends State<ProfilScreen> {
       backgroundColor: warnaTema[indexWarna],
       appBar: AppBar(
         title: const Text('Profil'),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.pinkAccent,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             const SizedBox(height: 20),
-            // Avatar
-            CircleAvatar(
+            const CircleAvatar(
               radius: 50,
-              backgroundImage: NetworkImage(
-                'https://instagram.fsoc16-1.fna.fbcdn.net/v/t51.2885-19/489036971_1562684597753907_6792625160551954835_n.jpg?_nc_ht=instagram.fsoc16-1.fna.fbcdn.net&_nc_cat=103&_nc_oc=Q6cZ2QHeqb2OBcReSWsRnX75HDaJO7Sa16qWBvA99-niohEy_Qk8FTS7Qeu115VKgD09URY&_nc_ohc=KSqiRssqDy0Q7kNvwGULtm4&_nc_gid=CtaPXG7M8eEnwHCkI-6wGw&edm=ALGbJPMBAAAA&ccb=7-5&oh=00_AfFRlDTN8oC2LC7opp7Owpkv7EEUMh1ILBeeaXrq5C5YpA&oe=6815889B&_nc_sid=7d3ac5',
-              ), // contoh foto random
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, size: 60, color: Colors.pinkAccent),
             ),
             const SizedBox(height: 16),
-            // Nama
             const Text(
-              'Nama User',
+              'Kurnia Ayu Anjani',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -78,13 +75,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            // Bio
             const Text(
-              'Bio singkat tentang user di sini...',
+              '230101104 - Sistem Informasi - C',
               style: TextStyle(fontSize: 16, color: Colors.white70),
             ),
             const SizedBox(height: 24),
-            // Dropdown pilih tema
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
@@ -113,20 +108,47 @@ class _ProfilScreenState extends State<ProfilScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // Tombol Logout / Keluar
             ElevatedButton.icon(
               onPressed: () {
-                Navigator.pop(context); // kembali ke halaman login
+                final box = GetStorage();
+                box.remove('username');
+                Get.offAll(() => const Login2Screen());
               },
               icon: const Icon(Icons.logout),
               label: const Text("Keluar"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+// Class untuk shared preferences (implementasi sederhana)
+class SharedPreferences {
+  static final SharedPreferences _instance = SharedPreferences._internal();
+
+  static Future<SharedPreferences> getInstance() async {
+    return _instance;
+  }
+
+  SharedPreferences._internal();
+
+  final Map<String, dynamic> _data = {};
+
+  Future<void> setInt(String key, int value) async {
+    _data[key] = value;
+  }
+
+  int? getInt(String key) {
+    return _data[key];
   }
 }

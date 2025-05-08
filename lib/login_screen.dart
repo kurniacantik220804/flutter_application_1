@@ -1,23 +1,12 @@
+// Catatan: File ini bisa dihapus karena sudah diganti dengan login_2_screen.dart
+// File ini hanya disimpan untuk referensi saja
+
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter Login',
-      theme: ThemeData(primarySwatch: Colors.pink),
-      home: LoginScreen(),
-    );
-  }
-}
-
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
