@@ -1,4 +1,3 @@
-// riwayat_screen.dart
 import 'package:flutter/material.dart';
 
 class RiwayatScreen extends StatelessWidget {
@@ -8,6 +7,7 @@ class RiwayatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Riwayat'),
         backgroundColor: Colors.pinkAccent,
       ),

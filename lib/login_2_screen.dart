@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
+import 'main_screen.dart';
 
 // Replace the import of main.dart with a more specific import
 // to avoid circular dependency

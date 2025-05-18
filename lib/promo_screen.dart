@@ -1,4 +1,3 @@
-// promo_screen.dart
 import 'package:flutter/material.dart';
 
 class PromoScreen extends StatelessWidget {
@@ -17,7 +16,6 @@ class PromoScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header section
             Text(
               'Promo Spesial Salon Cantik',
               style: TextStyle(
@@ -33,7 +31,6 @@ class PromoScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Promo Cards
             _buildPromoCard(
               context,
               'Diskon 30% Potong Rambut',

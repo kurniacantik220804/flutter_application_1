@@ -1,6 +1,3 @@
-// Catatan: File ini bisa dihapus karena sudah diganti dengan login_2_screen.dart
-// File ini hanya disimpan untuk referensi saja
-
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 
