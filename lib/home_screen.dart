@@ -103,14 +103,13 @@ class LayananCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder:
-                  (context) => DetailLayananScreen(
-                    title: title,
-                    harga: harga,
-                    deskripsi:
-                        'Layanan $title dengan kualitas terbaik untuk kebutuhan kecantikan Anda.',
-                    icon: icon,
-                  ),
+              builder: (context) => DetailLayanan(
+                title: title,
+                harga: harga,
+                deskripsi:
+                    'Layanan $title dengan kualitas terbaik untuk kebutuhan kecantikan Anda.',
+                icon: icon,
+              ),
             ),
           );
         },

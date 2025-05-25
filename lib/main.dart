@@ -6,11 +6,15 @@ import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.da
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
+
 import 'login_2_screen.dart';
 import 'detail_layanan.dart';
 import 'profil_screen.dart';
-import 'riwayat_screen.dart'; // Import the new screen
-import 'promo_screen.dart'; // Import the promo screen
+import 'riwayat_screen.dart';
+import 'promo_screen.dart';
+import 'booking_screen.dart';
 import 'main_screen.dart';
 
 // Centralized SharedPreferences class - can be moved to a separate utilities file
@@ -35,6 +39,7 @@ class SharedPreferences {
 }
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
   runApp(const MyApp());
 }
@@ -67,44 +72,84 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    _checkLoginStatus();
+  }
+
+  void _checkLoginStatus() {
     Future.delayed(const Duration(seconds: 3), () {
       final box = GetStorage();
+      bool? isLoggedIn = box.read('isLoggedIn');
       String? username = box.read('username');
 
-      if (username == null) {
-        Get.off(() => const Login2Screen());
+      if (isLoggedIn == true && username != null) {
+        // User is logged in, go to main screen
+        Get.offAll(() => const MainScreen());
       } else {
-        Get.to(() => const MainScreen());
+        // User is not logged in, go to login screen
+        Get.offAll(() => const Login2Screen());
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Menggunakan MediaQuery untuk mendapatkan ukuran layar
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Menggunakan ukuran responsif (70% dari lebar layar)
-            Image.asset(
-              'assets/logo.png',
-              width:
-                  screenSize.width * 0.5, // 50% dari lebar layar (lebih kecil)
-              fit:
-                  BoxFit
-                      .contain, // Memastikan gambar sesuai dengan ukuran container
+            // Logo container
+            Container(
+              width: screenSize.width * 0.4,
+              height: screenSize.width * 0.4,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.pink[50],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.spa,
+                size: screenSize.width * 0.2,
+                color: Colors.pinkAccent,
+              ),
             ),
-            const SizedBox(height: 15), // Jarak lebih dekat (sebelumnya 30)
+            const SizedBox(height: 30),
+            // App name
             Text(
               "Salon Cantik",
               style: TextStyle(
-                fontSize: 30, // Ukuran font yang lebih besar
+                fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: Colors.pinkAccent,
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Subtitle
+            Text(
+              "2023",
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 40),
+            // Loading indicator
+            const SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
               ),
             ),
           ],
