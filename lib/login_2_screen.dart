@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'main_screen.dart';
 import 'register_screen.dart';
+import 'service_supabase.dart'; // Import service
 
 class Login2Screen extends StatefulWidget {
   const Login2Screen({super.key});
@@ -44,7 +46,7 @@ class _Login2ScreenState extends State<Login2Screen> {
     }
 
     // Basic email validation
-    if (!emailController.text.contains('@')) {
+    if (!GetUtils.isEmail(emailController.text.trim())) {
       _showSnackBar('Format email tidak valid', Colors.red);
       return;
     }
@@ -54,52 +56,56 @@ class _Login2ScreenState extends State<Login2Screen> {
     });
 
     try {
-      // Simulate API call delay
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Menggunakan SupabaseService untuk login
+      final AuthResponse response = await SupabaseService.to.signIn(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
 
-      final box = GetStorage();
-
-      // Check if user has registered before
-      String? registeredEmail = box.read('registered_email');
-      String? registeredPassword = box.read('registered_password');
-
-      bool isValidLogin = false;
-
-      // Check against registered credentials first
-      if (registeredEmail != null && registeredPassword != null) {
-        if (emailController.text.trim() == registeredEmail &&
-            passwordController.text == registeredPassword) {
-          isValidLogin = true;
-        }
-      }
-
-      if (isValidLogin) {
-        // Save login state
-        await box.write('username', emailController.text.trim());
-        await box.write('isLoggedIn', true);
+      if (response.user != null && response.session != null) {
+        // Login berhasil
+        _showSnackBar('Login berhasil!', Colors.green);
 
         // Clear form
         emailController.clear();
         passwordController.clear();
 
-        // Show success message
-        _showSnackBar('Login berhasil!', Colors.green);
-
-        // Navigate to MainScreen
+        // Navigate to MainScreen (akan ditangani oleh auth listener di main.dart)
+        // Tapi kita bisa juga langsung navigate jika diperlukan
         await Future.delayed(const Duration(milliseconds: 500));
         
         if (mounted) {
           Get.offAll(() => const MainScreen());
         }
       } else {
-        // Login failed
-        _showSnackBar(
-          'Email atau password salah!\nSilakan daftar terlebih dahulu jika belum memiliki akun.',
-          Colors.red,
-        );
+        _showSnackBar('Login gagal: Tidak ada session yang dibuat', Colors.red);
       }
+
+    } on AuthException catch (e) {
+      String errorMessage = 'Login gagal: ';
+      
+      // Handle specific error messages
+      switch (e.message.toLowerCase()) {
+        case 'invalid login credentials':
+          errorMessage += 'Email atau password salah';
+          break;
+        case 'email not confirmed':
+          errorMessage += 'Email belum diverifikasi. Silakan cek email Anda';
+          break;
+        case 'invalid email':
+          errorMessage += 'Format email tidak valid';
+          break;
+        case 'too many requests':
+          errorMessage += 'Terlalu banyak percobaan. Coba lagi nanti';
+          break;
+        default:
+          errorMessage += e.message;
+      }
+      
+      _showSnackBar(errorMessage, Colors.red);
     } catch (e) {
-      _showSnackBar('Login gagal: ${e.toString()}', Colors.red);
+      _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
+      print('Login error: $e'); // For debugging
     } finally {
       if (mounted) {
         setState(() {
@@ -115,7 +121,7 @@ class _Login2ScreenState extends State<Login2Screen> {
       return;
     }
 
-    if (!emailController.text.contains('@')) {
+    if (!GetUtils.isEmail(emailController.text.trim())) {
       _showSnackBar('Format email tidak valid', Colors.red);
       return;
     }
@@ -125,17 +131,34 @@ class _Login2ScreenState extends State<Login2Screen> {
     });
 
     try {
-      // Simulate API call delay
-      await Future.delayed(const Duration(seconds: 1));
+      // Menggunakan SupabaseService untuk reset password
+      await SupabaseService.to.resetPassword(emailController.text.trim());
 
-      _showSnackBar('Cek email Anda untuk reset password', Colors.green);
+      _showSnackBar('Link reset password telah dikirim ke email Anda', Colors.green);
 
       setState(() {
         isResetMode = false;
         emailController.clear();
       });
+
+    } on AuthException catch (e) {
+      String errorMessage = 'Reset password gagal: ';
+      
+      switch (e.message.toLowerCase()) {
+        case 'invalid email':
+          errorMessage += 'Format email tidak valid';
+          break;
+        case 'user not found':
+          errorMessage += 'Email tidak terdaftar';
+          break;
+        default:
+          errorMessage += e.message;
+      }
+      
+      _showSnackBar(errorMessage, Colors.red);
     } catch (e) {
-      _showSnackBar('Reset password gagal: ${e.toString()}', Colors.red);
+      _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
+      print('Reset password error: $e'); // For debugging
     } finally {
       if (mounted) {
         setState(() {
@@ -318,7 +341,7 @@ class _Login2ScreenState extends State<Login2Screen> {
         ),
         const SizedBox(height: 16),
         const Text(
-          "Masukkan email Anda dan tunggu kode aktivasi dikirimkan",
+          "Masukkan email Anda dan kami akan mengirimkan link untuk reset password",
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.black54),
         ),
@@ -365,7 +388,7 @@ class _Login2ScreenState extends State<Login2Screen> {
                     ),
                   )
                 : const Text(
-                    "Kirim",
+                    "Kirim Link Reset",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
           ),
