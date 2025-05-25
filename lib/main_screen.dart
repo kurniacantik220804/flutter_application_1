@@ -8,12 +8,12 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'login_2_screen.dart';
 import 'detail_layanan.dart';
-import 'profil_screen.dart';
-import 'riwayat_screen.dart'; // Import the new screen
-import 'promo_screen.dart';
+// import 'profil_screen.dart'; // Hapus impor ini
+import 'riwayat_screen.dart';
+import 'promo_screen.dart'; // Pastikan PromoScreen sudah diimpor
 import 'booking_screen.dart';
-import 'package:flutter/material.dart';
-import 'jadwal_booking_screen.dart'; // Import the booking screen
+import 'jadwal_booking_screen.dart';
+import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,7 +24,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   final autoSizeGroup = AutoSizeGroup();
-  var _bottomNavIndex = 0; // default index untuk halaman pertama
+  var _bottomNavIndex = 0;
 
   late AnimationController _fabAnimationController;
   late AnimationController _borderRadiusAnimationController;
@@ -34,48 +34,54 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   late CurvedAnimation borderRadiusCurve;
   late AnimationController _hideBottomBarAnimationController;
 
-  final iconList = <IconData>[
+  static const iconList = <IconData>[
     Icons.dashboard_rounded,
-    Icons.account_circle_rounded,
+    Icons.discount_rounded, // Mengganti ikon profil dengan ikon diskon/promo
     Icons.settings_rounded,
-    Icons.history_rounded, // icon untuk riwayat
+    Icons.history_rounded,
   ];
 
-  final titleList = ["Dashboard", "Profil", "Pengaturan", "Riwayat"];
+  static const titleList = ["Dashboard", "Promo", "Pengaturan", "Riwayat"]; // Mengganti teks "Profil" menjadi "Promo"
 
-  final List<Widget> pages = [
-    const DashboardScreen(),
-    const ProfilScreen(),
-    const MainScreen(),
-    const RiwayatScreen(), // Halaman riwayat yang baru
-  ];
+  late final List<Widget> pages;
 
   @override
   void initState() {
     super.initState();
 
+    pages = [
+      const DashboardScreen(),
+      const PromoScreen(), // Mengganti ProfilScreen dengan PromoScreen
+      const SettingsScreen(),
+      const RiwayatScreen(),
+    ];
+
+    _initializeAnimations();
+  }
+
+  void _initializeAnimations() {
     _fabAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+    
     _borderRadiusAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+
     fabCurve = CurvedAnimation(
       parent: _fabAnimationController,
       curve: const Interval(0.5, 1.0, curve: Curves.fastOutSlowIn),
     );
+    
     borderRadiusCurve = CurvedAnimation(
       parent: _borderRadiusAnimationController,
       curve: const Interval(0.5, 1.0, curve: Curves.fastOutSlowIn),
     );
 
     fabAnimation = Tween<double>(begin: 0, end: 1).animate(fabCurve);
-    borderRadiusAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(borderRadiusCurve);
+    borderRadiusAnimation = Tween<double>(begin: 0, end: 1).animate(borderRadiusCurve);
 
     _hideBottomBarAnimationController = AnimationController(
       duration: const Duration(milliseconds: 200),
@@ -83,12 +89,13 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
 
     Future.delayed(
-      const Duration(seconds: 1),
-      () => _fabAnimationController.forward(),
-    );
-    Future.delayed(
-      const Duration(seconds: 1),
-      () => _borderRadiusAnimationController.forward(),
+      const Duration(milliseconds: 300),
+      () {
+        if (mounted) {
+          _fabAnimationController.forward();
+          _borderRadiusAnimationController.forward();
+        }
+      },
     );
   }
 
@@ -131,12 +138,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         backgroundColor: Colors.pinkAccent,
         child: const Icon(Icons.spa, color: Colors.white),
         onPressed: () {
-          _fabAnimationController.reset();
-          _borderRadiusAnimationController.reset();
-          _borderRadiusAnimationController.forward();
-          _fabAnimationController.forward();
-
-          // Navigate to promo screen instead of just showing a snackbar
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const PromoScreen()),
@@ -188,16 +189,33 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 }
 
-// Dashboard Screen
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin {
+  Future<bool>? _upcomingBookingsFuture;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _upcomingBookingsFuture = _checkForUpcomingBookings();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
+    
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Row(
+        title: const Row(
           children: [
             Icon(Icons.spa, color: Colors.white),
             SizedBox(width: 8),
@@ -206,10 +224,10 @@ class DashboardScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_outlined),
+            icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Notifikasi terbaru')),
+                const SnackBar(content: Text('Notifikasi terbaru')),
               );
             },
           ),
@@ -222,350 +240,300 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Greeting section with user name
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.pinkAccent, Colors.pink[300]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.pinkAccent,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Selamat Datang,',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                        ),
-                        Text(
-                          'Pelanggan',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.arrow_forward,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
+            _buildGreetingSection(),
+            const SizedBox(height: 24),
+            
+            _buildPromoSection(context),
             const SizedBox(height: 24),
 
-            // Promo slider
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.pink[50],
-              ),
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                '🎉 PROMO SPESIAL',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.pink[800],
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Diskon 20% untuk pelanggan baru!',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const PromoScreen(),
-                                    ),
-                                  );
-                                },
-                                style: TextButton.styleFrom(
-                                  backgroundColor: Colors.pinkAccent,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Text('Lihat Promo'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: 80),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    top: 0,
-                    child: Container(
-                      width: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.pink[100],
-                        borderRadius: BorderRadius.horizontal(
-                          right: Radius.circular(12),
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.card_giftcard,
-                          size: 50,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Upcoming booking reminder (if any)
-            FutureBuilder(
-              future: _checkForUpcomingBookings(),
+            FutureBuilder<bool>(
+              future: _upcomingBookingsFuture,
               builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data == true) {
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 24),
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.blue[200]!,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.event_available,
-                            color: Colors.blue[700],
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Jadwal Booking Mendatang',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Kamu memiliki booking aktif. Cek detail di halaman Riwayat.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
-                            color: Colors.blue[700],
-                          ),
-                          onPressed: () {
-                            // Switch to history tab
-                            // This requires a method to update _bottomNavIndex in parent widget
-                            // For now we'll just navigate to RiwayatScreen
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RiwayatScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  );
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink();
                 }
-                return SizedBox.shrink();
+                
+                if (snapshot.hasData && snapshot.data == true) {
+                  return _buildUpcomingBookingReminder(context);
+                }
+                return const SizedBox.shrink();
               },
             ),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Layanan Unggulan',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to a full services page (not implemented yet)
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lihat semua layanan')),
-                    );
-                  },
-                  child: Text(
-                    'Lihat Semua',
-                    style: TextStyle(
-                      color: Colors.pinkAccent,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
+            _buildFeaturedServicesHeader(context),
             const SizedBox(height: 12),
-
-            // Featured services grid
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              children: const [
-                LayananCard(
-                  icon: Icons.cut,
-                  title: 'Potong Rambut',
-                  harga: 'Rp 25.000',
-                ),
-                LayananCard(
-                  icon: Icons.spa,
-                  title: 'Facial Wajah',
-                  harga: 'Rp 40.000',
-                ),
-                LayananCard(
-                  icon: Icons.brush,
-                  title: 'Makeup',
-                  harga: 'Rp 70.000',
-                ),
-                LayananCard(
-                  icon: Icons.local_florist,
-                  title: 'Creambath',
-                  harga: 'Rp 30.000',
-                ),
-              ],
-            ),
-
+            
+            _buildFeaturedServices(),
             const SizedBox(height: 24),
 
-            // Beauty tips section
-            Text(
-              'Tips Kecantikan',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Container(
-              height: 180,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildTipCard(
-                    context,
-                    'Rahasia Rambut Sehat',
-                    'Konsumsi vitamin dan protein yang cukup untuk pertumbuhan rambut yang sehat',
-                    Icons.favorite,
-                  ),
-                  _buildTipCard(
-                    context,
-                    'Jaga Kulit Wajah',
-                    'Gunakan tabir surya setiap hari untuk mencegah penuaan dini',
-                    Icons.wb_sunny,
-                  ),
-                  _buildTipCard(
-                    context,
-                    'Makeup Natural',
-                    'Gunakan warna-warna yang mendekati warna kulit untuk tampilan alami',
-                    Icons.face,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 100), // Extra space for bottom navigation
+            _buildBeautyTipsSection(context),
+            const SizedBox(height: 100),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTipCard(
-      BuildContext context, String title, String content, IconData icon) {
+  Widget _buildGreetingSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.pinkAccent, Colors.pink[300]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person, size: 40, color: Colors.pinkAccent),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Selamat Datang,',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                const Text(
+                  'Pelanggan',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.arrow_forward, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoSection(BuildContext context) {
+    return Container(
+      height: 120,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.pink[50],
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '🎉 PROMO SPESIAL',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.pink[800],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Diskon 20% untuk pelanggan baru!',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PromoScreen()),
+                        ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.pinkAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text('Lihat Promo'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 80),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            top: 0,
+            child: Container(
+              width: 100,
+              decoration: BoxDecoration(
+                color: Colors.pink[100],
+                borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+              ),
+              child: const Center(
+                child: Icon(Icons.card_giftcard, size: 50, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpcomingBookingReminder(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[200]!, width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.blue[100],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.event_available, color: Colors.blue[700]),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Jadwal Booking Mendatang',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Kamu memiliki booking aktif. Cek detail di halaman Riwayat.',
+                  style: TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.blue[700]),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const RiwayatScreen()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturedServicesHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Layanan Unggulan',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        TextButton(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Lihat semua layanan')),
+            );
+          },
+          child: const Text(
+            'Lihat Semua',
+            style: TextStyle(color: Colors.pinkAccent),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeaturedServices() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      children: const [
+        LayananCard(icon: Icons.cut, title: 'Potong Rambut', harga: 'Rp 25.000'),
+        LayananCard(icon: Icons.spa, title: 'Facial Wajah', harga: 'Rp 40.000'),
+        LayananCard(icon: Icons.brush, title: 'Makeup', harga: 'Rp 70.000'),
+        LayananCard(icon: Icons.local_florist, title: 'Creambath', harga: 'Rp 30.000'),
+      ],
+    );
+  }
+
+  Widget _buildBeautyTipsSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tips Kecantikan',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 180,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _buildTipCard(
+                context,
+                'Rahasia Rambut Sehat',
+                'Konsumsi vitamin dan protein yang cukup untuk pertumbuhan rambut yang sehat',
+                Icons.favorite,
+              ),
+              _buildTipCard(
+                context,
+                'Jaga Kulit Wajah',
+                'Gunakan tabir surya setiap hari untuk mencegah penuaan dini',
+                Icons.wb_sunny,
+              ),
+              _buildTipCard(
+                context,
+                'Makeup Natural',
+                'Gunakan warna-warna yang mendekati warna kulit untuk tampilan alami',
+                Icons.face,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTipCard(BuildContext context, String title, String content, IconData icon) {
     return Container(
       width: 280,
-      margin: EdgeInsets.only(right: 16),
+      margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
@@ -573,7 +541,7 @@ class DashboardScreen extends StatelessWidget {
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
             blurRadius: 5,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(color: Colors.pink[50]!, width: 1),
@@ -586,47 +554,36 @@ class DashboardScreen extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.pink[50],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    icon,
-                    color: Colors.pinkAccent,
-                    size: 20,
-                  ),
+                  child: Icon(icon, color: Colors.pinkAccent, size: 20),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               content,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
             ),
-            Spacer(),
+            const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
                   onPressed: () {
-                    // Show tip details
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Tips detail akan segera hadir')),
+                      const SnackBar(content: Text('Tips detail akan segera hadir')),
                     );
                   },
-                  child: Text(
+                  child: const Text(
                     'Selengkapnya',
                     style: TextStyle(
                       color: Colors.pinkAccent,
@@ -642,16 +599,17 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // Mock function to check if there are upcoming bookings
   Future<bool> _checkForUpcomingBookings() async {
-    final box = GetStorage();
-    if (box.hasData('bookings')) {
-      List<dynamic> bookings = box.read('bookings');
-      if (bookings.isNotEmpty) {
-        return true;
+    try {
+      final box = GetStorage();
+      if (box.hasData('bookings')) {
+        List<dynamic> bookings = box.read('bookings');
+        return bookings.isNotEmpty;
       }
+      return false;
+    } catch (e) {
+      return false;
     }
-    return false;
   }
 }
 
@@ -673,20 +631,17 @@ class LayananCard extends StatelessWidget {
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () {
-          // Navigate to detail layanan
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DetailLayanan(
-                title: title,
-                harga: harga,
-                icon: icon,
-                deskripsi: _getLayananDeskripsi(title),
-              ),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailLayanan(
+              title: title,
+              harga: harga,
+              icon: icon,
+              deskripsi: _getLayananDeskripsi(title),
             ),
-          );
-        },
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -698,35 +653,20 @@ class LayananCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(harga, style: const TextStyle(color: Colors.grey)),
               const SizedBox(height: 8),
-              InkWell(
-                onTap: () {
-                  // Navigate to the booking schedule screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LayananCard(
-                        icon: icon,
-                        title: title,
-                        harga: harga,
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.pinkAccent,
-                    borderRadius: BorderRadius.circular(6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.pinkAccent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Booking',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: const Text(
-                    'Booking',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
@@ -737,17 +677,13 @@ class LayananCard extends StatelessWidget {
   }
 
   String _getLayananDeskripsi(String title) {
-    switch (title) {
-      case 'Potong Rambut':
-        return 'Layanan potong rambut profesional sesuai dengan model yang diinginkan. Termasuk hair styling dan cuci rambut.';
-      case 'Facial Wajah':
-        return 'Perawatan wajah yang membantu membersihkan, menghidrasi, dan menyegarkan kulit wajah Anda.';
-      case 'Makeup':
-        return 'Layanan rias wajah untuk berbagai acara formal maupun kasual dengan produk berkualitas tinggi.';
-      case 'Creambath':
-        return 'Perawatan rambut intensif dengan krim nutrisi untuk menjaga kesehatan dan kilau rambut Anda.';
-      default:
-        return 'Layanan perawatan kecantikan dan kesehatan oleh tim profesional kami.';
-    }
+    const deskripsiMap = {
+      'Potong Rambut': 'Layanan potong rambut profesional sesuai dengan model yang diinginkan. Termasuk hair styling dan cuci rambut.',
+      'Facial Wajah': 'Perawatan wajah yang membantu membersihkan, menghidrasi, dan menyegarkan kulit wajah Anda.',
+      'Makeup': 'Layanan rias wajah untuk berbagai acara formal maupun kasual dengan produk berkualitas tinggi.',
+      'Creambath': 'Perawatan rambut intensif dengan krim nutrisi untuk menjaga kesehatan dan kilau rambut Anda.',
+    };
+    
+    return deskripsiMap[title] ?? 'Layanan perawatan kecantikan dan kesehatan oleh tim profesional kami.';
   }
 }
