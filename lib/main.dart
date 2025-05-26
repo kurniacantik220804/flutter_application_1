@@ -9,15 +9,14 @@ import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'login_2_screen.dart';
 import 'detail_layanan.dart';
-import 'profil_screen.dart';
 import 'riwayat_screen.dart';
 import 'promo_screen.dart';
-import 'booking_screen.dart';
 import 'main_screen.dart';
 import 'service_supabase.dart'; // Import service
+import 'theme_controller.dart'; // Import theme controller
+import 'theme_widgets.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,11 +25,15 @@ void main() async {
   // Inisialisasi Supabase
   await Supabase.initialize(
     url: 'https://xpzslbieloolznmowdax.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwenNsYmllbG9vbHpubW93ZGF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxNTY3ODUsImV4cCI6MjA2MzczMjc4NX0.kDWu37oK58OQsYldglPcrBYrAxTV7KXvZTJ2qww7ESg',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwenNsYmllbG9vbHpubW93ZGF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxNTY3ODUsImV4cCI6MjA2MzczMjc4NX0.kDWu37oK58OQsYldglPcrBYrAxTV7KXvZTJ2qww7ESg',
   );
 
   // Inisialisasi SupabaseService
   Get.put(SupabaseService());
+
+  // Inisialisasi ThemeController
+  Get.put(ThemeController());
 
   runApp(const MyApp());
 }
@@ -40,14 +43,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Salon Cantik',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pinkAccent),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
+    return GetBuilder<ThemeController>(
+      builder: (themeController) {
+        return GetMaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Salon Cantik',
+          theme: themeController.getCurrentTheme(),
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }
@@ -116,66 +120,61 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo container
-            Container(
-              width: screenSize.width * 0.4,
-              height: screenSize.width * 0.4,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.pink[50],
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
+    return GetBuilder<ThemeController>(
+      builder: (controller) {
+        final colors = controller.getThemeColors();
+
+        return Scaffold(
+          body: ThemedBackground(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo container
+                  AnimatedThemedContainer(
+                    padding: EdgeInsets.all(screenSize.width * 0.1),
+                    child: Icon(
+                      Icons.spa,
+                      size: screenSize.width * 0.2,
+                      color: colors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  // App name
+                  ThemedText(
+                    text: "Salon Cantik",
+                    isPrimary: true,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Subtitle
+                  ThemedText(
+                    text: "2023",
+                    isSecondary: true,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  // Loading indicator
+                  SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
+                    ),
                   ),
                 ],
               ),
-              child: Icon(
-                Icons.spa,
-                size: screenSize.width * 0.2,
-                color: Colors.pinkAccent,
-              ),
             ),
-            const SizedBox(height: 30),
-            // App name
-            Text(
-              "Salon Cantik",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.pinkAccent,
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Subtitle
-            Text(
-              "2023",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 40),
-            // Loading indicator
-            const SizedBox(
-              width: 30,
-              height: 30,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
