@@ -33,7 +33,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       List<dynamic> savedBookings = box.read('bookings');
       setState(() {
         bookings = List<Map<String, dynamic>>.from(savedBookings);
-        // Sort bookings by date (newest first)
+        // Urutkan booking berdasarkan tanggal (terbaru dulu)
         bookings.sort((a, b) {
           try {
             DateTime dateA = DateFormat('dd MMM yyyy').parse(a['date']);
@@ -48,12 +48,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   void _deleteBooking(int index) {
-    final themeController = ThemeController.to;
-    final colors = themeController.getThemeColors();
+    // Menggunakan Obx untuk mendapatkan tema terbaru
+    Get.dialog(
+      Obx(() {
+        final themeController = ThemeController.to;
+        final colors = themeController.getThemeColors();
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -99,14 +99,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
           ],
         );
-      },
+      }),
     );
   }
 
   void _updateBookingStatus(int index, String newStatus) {
-    final themeController = ThemeController.to;
-    final colors = themeController.getThemeColors();
-
     setState(() {
       bookings[index]['status'] = newStatus;
     });
@@ -114,6 +111,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     // Update storage
     final box = GetStorage();
     box.write('bookings', bookings);
+
+    // Menggunakan reaktif tema untuk snackbar
+    final themeController = ThemeController.to;
+    final colors = themeController.getThemeColors();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -183,152 +184,136 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   Widget build(BuildContext context) {
     final filteredList = filteredBookings;
 
-    return GetBuilder<ThemeController>(
-      builder: (themeController) {
-        final colors = themeController.getThemeColors();
-        final isDarkMode = themeController.isDarkMode;
+    // Menggunakan Obx untuk reaktivitas tema otomatis
+    return Obx(() {
+      final themeController = ThemeController.to;
+      final colors = themeController.getThemeColors();
 
-        return Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: const Text('Riwayat Booking'),
-            backgroundColor: colors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [colors.primary, colors.secondary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _loadBookings,
-                tooltip: 'Refresh',
-              ),
-            ],
-          ),
-          body: Container(
+      return Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: const Text('Riwayat Booking'),
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          flexibleSpace: Container(
             decoration: BoxDecoration(
-              gradient: themeController.getBackgroundGradient(),
+              gradient: LinearGradient(
+                colors: [colors.primary, colors.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-            child: Column(
-              children: [
-                // Filter Section
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? Colors.grey[850]?.withOpacity(0.8)
-                        : Colors.white.withOpacity(0.9),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors.primary.withOpacity(0.1),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Filter Status:',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: filterOptions.map((filter) {
-                            final isSelected = selectedFilter == filter;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: FilterChip(
-                                label: Text(filter),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    selectedFilter = filter;
-                                  });
-                                },
-                                selectedColor: colors.primary.withOpacity(0.3),
-                                backgroundColor: isDarkMode
-                                    ? Colors.grey[700]
-                                    : Colors.grey[100],
-                                checkmarkColor: colors.primary,
-                                labelStyle: TextStyle(
-                                  color: isSelected
-                                      ? colors.primary
-                                      : (isDarkMode
-                                          ? Colors.white
-                                          : Colors.black87),
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
+          ),
+        ),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: themeController.getBackgroundGradient(),
+          ),
+          child: Column(
+            children: [
+              // Filter Section
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.primary.withOpacity(0.1),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-
-                // Booking List
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: filteredList.isEmpty
-                        ? _buildEmptyState(colors, isDarkMode)
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${filteredList.length} Booking Ditemukan',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Filter Status:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: filterOptions.map((filter) {
+                          final isSelected = selectedFilter == filter;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: FilterChip(
+                              label: Text(filter),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  selectedFilter = filter;
+                                });
+                              },
+                              selectedColor: colors.primary.withOpacity(0.3),
+                              backgroundColor: Colors.grey[100],
+                              checkmarkColor: colors.primary,
+                              labelStyle: TextStyle(
+                                color: isSelected ? colors.primary : Colors.black87,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
-                              const SizedBox(height: 12),
-                              Expanded(
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Booking List
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: filteredList.isEmpty
+                      ? _buildEmptyState(colors)
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${filteredList.length} Booking Ditemukan',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: () async {
+                                  _loadBookings();
+                                },
+                                color: colors.primary,
                                 child: ListView.builder(
                                   itemCount: filteredList.length,
                                   itemBuilder: (context, index) {
                                     final booking = filteredList[index];
-                                    final originalIndex =
-                                        bookings.indexOf(booking);
-                                    return _buildHistoryCard(booking,
-                                        originalIndex, colors, isDarkMode);
+                                    final originalIndex = bookings.indexOf(booking);
+                                    return _buildHistoryCard(booking, originalIndex, colors);
                                   },
                                 ),
                               ),
-                            ],
-                          ),
-                  ),
+                            ),
+                          ],
+                        ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    });
   }
 
-  Widget _buildEmptyState(ThemeColors colors, bool isDarkMode) {
+  Widget _buildEmptyState(ThemeColors colors) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -336,7 +321,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           Icon(
             selectedFilter == 'Semua' ? Icons.history : Icons.filter_list_off,
             size: 80,
-            color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+            color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
@@ -345,7 +330,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 : 'Tidak ada booking dengan status $selectedFilter',
             style: TextStyle(
               fontSize: 18,
-              color: isDarkMode ? Colors.white70 : Colors.grey[600],
+              color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
           ),
@@ -356,7 +341,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 : 'Coba filter status lain',
             style: TextStyle(
               fontSize: 14,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[500],
+              color: Colors.grey[500],
             ),
             textAlign: TextAlign.center,
           ),
@@ -365,25 +350,24 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildHistoryCard(Map<String, dynamic> booking, int originalIndex,
-      ThemeColors colors, bool isDarkMode) {
+  Widget _buildHistoryCard(Map<String, dynamic> booking, int originalIndex, ThemeColors colors) {
     final status = booking['status'] ?? 'Terjadwal';
     final isUpcoming = _isUpcoming(booking['date'], booking['time']);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 3,
-      color: isDarkMode ? Colors.grey[800] : Colors.white,
+      color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () => _showBookingDetails(booking, colors, isDarkMode),
+        onTap: () => _showBookingDetails(booking),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with service info and status
+              // Header dengan info layanan dan status
               Row(
                 children: [
                   Container(
@@ -405,10 +389,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       children: [
                         Text(
                           booking['title'],
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: isDarkMode ? Colors.white : Colors.black,
+                            color: Colors.black,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -425,8 +409,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   ),
                   // Status chip
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(status).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -460,11 +443,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               const SizedBox(height: 12),
               Divider(
                 height: 1,
-                color: isDarkMode ? Colors.grey[600] : Colors.grey[300],
+                color: Colors.grey[300],
               ),
               const SizedBox(height: 12),
 
-              // Booking details
+              // Detail booking
               Row(
                 children: [
                   Expanded(
@@ -474,30 +457,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         _buildDetailRow(
                           Icons.calendar_today,
                           '${booking['date']} - ${booking['time']}',
-                          isUpcoming && status == 'Terjadwal'
-                              ? Colors.blue
-                              : (isDarkMode
-                                  ? Colors.white70
-                                  : Colors.grey[700]!),
-                          isDarkMode,
+                          isUpcoming && status == 'Terjadwal' ? Colors.blue : Colors.grey[700]!,
                         ),
                         const SizedBox(height: 8),
                         _buildDetailRow(
                           Icons.payment,
                           booking['payment'],
-                          isDarkMode ? Colors.white70 : Colors.grey[700]!,
-                          isDarkMode,
+                          Colors.grey[700]!,
                         ),
                       ],
                     ),
                   ),
-                  // Action buttons
+                  // Tombol aksi
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       switch (value) {
                         case 'edit_status':
-                          _showStatusDialog(
-                              originalIndex, status, colors, isDarkMode);
+                          _showStatusDialog(originalIndex, status);
                           break;
                         case 'delete':
                           _deleteBooking(originalIndex);
@@ -511,12 +487,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           children: [
                             Icon(Icons.edit, size: 18, color: colors.primary),
                             const SizedBox(width: 8),
-                            Text(
-                              'Ubah Status',
-                              style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black,
-                              ),
-                            ),
+                            const Text('Ubah Status'),
                           ],
                         ),
                       ),
@@ -531,20 +502,19 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         ),
                       ),
                     ],
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.more_vert,
-                      color: isDarkMode ? Colors.white70 : Colors.grey,
+                      color: Colors.grey,
                     ),
                   ),
                 ],
               ),
 
-              // Upcoming indicator
+              // Indikator booking mendatang
               if (isUpcoming && status == 'Terjadwal')
                 Container(
                   margin: const EdgeInsets.only(top: 12),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(20),
@@ -553,8 +523,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.access_time,
-                          size: 14, color: Colors.blue[700]),
+                      Icon(Icons.access_time, size: 14, color: Colors.blue[700]),
                       const SizedBox(width: 4),
                       Text(
                         'Booking Mendatang',
@@ -574,14 +543,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildDetailRow(
-      IconData icon, String text, Color textColor, bool isDarkMode) {
+  Widget _buildDetailRow(IconData icon, String text, Color textColor) {
     return Row(
       children: [
         Icon(
           icon,
           size: 16,
-          color: isDarkMode ? Colors.white60 : Colors.grey[600],
+          color: Colors.grey[600],
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -594,13 +562,14 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  void _showStatusDialog(
-      int index, String currentStatus, ThemeColors colors, bool isDarkMode) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
+  void _showStatusDialog(int index, String currentStatus) {
+    Get.dialog(
+      Obx(() {
+        final themeController = ThemeController.to;
+        final colors = themeController.getThemeColors();
+
         return AlertDialog(
-          backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -614,9 +583,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               return RadioListTile<String>(
                 title: Text(
                   status,
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
+                  style: const TextStyle(color: Colors.black),
                 ),
                 value: status,
                 groupValue: currentStatus,
@@ -640,17 +607,18 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
           ],
         );
-      },
+      }),
     );
   }
 
-  void _showBookingDetails(
-      Map<String, dynamic> booking, ThemeColors colors, bool isDarkMode) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
+  void _showBookingDetails(Map<String, dynamic> booking) {
+    Get.dialog(
+      Obx(() {
+        final themeController = ThemeController.to;
+        final colors = themeController.getThemeColors();
+
         return AlertDialog(
-          backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -665,13 +633,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDetailItem('Harga', booking['price'], isDarkMode),
-              _buildDetailItem('Tanggal & Waktu',
-                  '${booking['date']} - ${booking['time']}', isDarkMode),
-              _buildDetailItem(
-                  'Metode Pembayaran', booking['payment'], isDarkMode),
-              _buildDetailItem(
-                  'Status', booking['status'] ?? 'Terjadwal', isDarkMode),
+              _buildDetailItem('Harga', booking['price']),
+              _buildDetailItem('Tanggal & Waktu', '${booking['date']} - ${booking['time']}'),
+              _buildDetailItem('Metode Pembayaran', booking['payment']),
+              _buildDetailItem('Status', booking['status'] ?? 'Terjadwal'),
             ],
           ),
           actions: [
@@ -684,11 +649,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
           ],
         );
-      },
+      }),
     );
   }
 
-  Widget _buildDetailItem(String label, String value, bool isDarkMode) {
+  Widget _buildDetailItem(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
@@ -698,17 +663,17 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             width: 100,
             child: Text(
               '$label:',
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black,
+                color: Colors.black,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                color: isDarkMode ? Colors.white70 : Colors.black87,
+              style: const TextStyle(
+                color: Colors.black87,
               ),
             ),
           ),

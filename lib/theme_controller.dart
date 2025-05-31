@@ -3,131 +3,108 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
 class ThemeController extends GetxController {
-  static ThemeController get to => Get.find();
+  static ThemeController get to {
+    try {
+      return Get.find<ThemeController>();
+    } catch (e) {
+      Get.put(ThemeController());
+      return Get.find<ThemeController>();
+    }
+  }
 
   final _storage = GetStorage();
-  static const String _themeKey = 'selected_theme';
-  static const String _customColorsKey = 'custom_colors';
+  static const String _themeKey = 'tema_terpilih';
 
   // Observable untuk tema yang dipilih
   final _selectedTheme = AppThemeType.pink.obs;
-  final _isDarkMode = false.obs;
-  final Rx<Color> _customPrimaryColor =
-      const Color(0xFFFF4081).obs; // Colors.pinkAccent
-  final Rx<Color> _customSecondaryColor =
-      const Color(0xFFE91E63).obs; // Colors.pink
+
+  // Cache untuk warna tema agar tidak dihitung berulang
+  ThemeColors? _cachedColors;
+  AppThemeType? _lastCachedTheme;
 
   // Getters
   AppThemeType get selectedTheme => _selectedTheme.value;
-  bool get isDarkMode => _isDarkMode.value;
-  Color get customPrimaryColor => _customPrimaryColor.value;
-  Color get customSecondaryColor => _customSecondaryColor.value;
 
   @override
   void onInit() {
     super.onInit();
     _loadTheme();
+    _cacheThemeColors(); // Cache warna di init
   }
 
-  // Load tema dari storage
+  // Cache warna tema untuk performa
+  void _cacheThemeColors() {
+    if (_lastCachedTheme != _selectedTheme.value) {
+      _lastCachedTheme = _selectedTheme.value;
+      _cachedColors = _getThemeColorsInternal(_selectedTheme.value);
+    }
+  }
+
+  // Muat tema dari penyimpanan
   void _loadTheme() {
     try {
       final themeIndex = _storage.read(_themeKey) ?? 0;
       if (themeIndex >= 0 && themeIndex < AppThemeType.values.length) {
         _selectedTheme.value = AppThemeType.values[themeIndex];
-      }
-
-      final customColors = _storage.read(_customColorsKey);
-      if (customColors != null && customColors is Map) {
-        try {
-          final primaryValue = customColors['primary'];
-          final secondaryValue = customColors['secondary'];
-
-          if (primaryValue != null && primaryValue is int) {
-            _customPrimaryColor.value = Color(primaryValue);
-          }
-          if (secondaryValue != null && secondaryValue is int) {
-            _customSecondaryColor.value = Color(secondaryValue);
-          }
-        } catch (e) {
-          print('Error loading custom colors: $e');
-          // Reset to default colors if there's an error
-          _resetCustomColors();
-        }
+      } else {
+        _selectedTheme.value = AppThemeType.pink;
       }
     } catch (e) {
-      print('Error loading theme: $e');
-      // Reset to default if there's an error
+      print('Error memuat tema: $e');
       _selectedTheme.value = AppThemeType.pink;
-      _resetCustomColors();
     }
   }
 
-  // Reset custom colors to default
-  void _resetCustomColors() {
-    _customPrimaryColor.value = const Color(0xFFFF4081); // Colors.pinkAccent
-    _customSecondaryColor.value = const Color(0xFFE91E63); // Colors.pink
-  }
-
-  // Simpan tema ke storage
+  // Simpan tema ke penyimpanan
   void _saveTheme() {
     try {
       _storage.write(_themeKey, _selectedTheme.value.index);
-      _storage.write(_customColorsKey, {
-        'primary': _customPrimaryColor.value.value,
-        'secondary': _customSecondaryColor.value.value,
-      });
     } catch (e) {
-      print('Error saving theme: $e');
+      print('Error menyimpan tema: $e');
     }
   }
 
-  // Ganti tema
+  // Ganti tema dengan optimasi
   void changeTheme(AppThemeType theme) {
+    if (_selectedTheme.value == theme) return; // Tidak perlu update jika sama
+    
     _selectedTheme.value = theme;
+    _cacheThemeColors(); // Update cache
     _saveTheme();
     _updateAppTheme();
-  }
-
-  // Toggle dark mode
-  void toggleDarkMode() {
-    _isDarkMode.value = !_isDarkMode.value;
-    _updateAppTheme();
-  }
-
-  // Set custom colors
-  void setCustomColors(Color primary, Color secondary) {
-    _customPrimaryColor.value = primary;
-    _customSecondaryColor.value = secondary;
-    if (_selectedTheme.value == AppThemeType.custom) {
-      _saveTheme();
-      _updateAppTheme();
-    }
+    
+    // Update hanya widget tertentu, bukan semua
+    update(['dashboard', 'theme_settings']); // ID spesifik
   }
 
   // Update tema aplikasi
   void _updateAppTheme() {
-    Get.changeTheme(getCurrentTheme());
+    try {
+      Get.changeTheme(getCurrentTheme());
+    } catch (e) {
+      print('Error mengupdate tema aplikasi: $e');
+    }
   }
 
-  // Dapatkan tema saat ini
+  // Dapatkan tema saat ini dengan cache
   ThemeData getCurrentTheme() {
-    final themeColors = getThemeColors();
+    _cacheThemeColors();
+    final themeColors = _cachedColors!;
 
     return ThemeData(
       useMaterial3: true,
-      brightness: _isDarkMode.value ? Brightness.dark : Brightness.light,
+      brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         seedColor: themeColors.primary,
-        brightness: _isDarkMode.value ? Brightness.dark : Brightness.light,
+        brightness: Brightness.light,
       ),
       primaryColor: themeColors.primary,
-      scaffoldBackgroundColor:
-          _isDarkMode.value ? const Color(0xFF121212) : themeColors.background,
+      scaffoldBackgroundColor: themeColors.background,
       appBarTheme: AppBarTheme(
         backgroundColor: themeColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: themeColors.primary,
@@ -137,11 +114,30 @@ class ThemeController extends GetxController {
         backgroundColor: Colors.white,
         selectedItemColor: themeColors.primary,
         unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
       ),
-      cardTheme: CardTheme(
-        color: _isDarkMode.value ? const Color(0xFF1E1E1E) : Colors.white,
+      cardTheme: CardThemeData(
+        color: Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: themeColors.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: themeColors.primary,
+          side: BorderSide(color: themeColors.primary),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: MaterialStateProperty.resolveWith((states) {
@@ -160,64 +156,50 @@ class ThemeController extends GetxController {
     );
   }
 
-  // Dapatkan warna tema
+  // Dapatkan warna tema dengan cache
   ThemeColors getThemeColors() {
-    switch (_selectedTheme.value) {
+    _cacheThemeColors();
+    return _cachedColors!;
+  }
+
+  // Internal method untuk mendapatkan warna tema
+  ThemeColors _getThemeColorsInternal(AppThemeType theme) {
+    switch (theme) {
       case AppThemeType.pink:
-        return ThemeColors(
-          primary: const Color(0xFFFF4081), // Colors.pinkAccent
-          secondary: const Color(0xFFE91E63), // Colors.pink
-          background: const Color(0xFFFFF0F5),
-          surface: Colors.white,
-        );
-      case AppThemeType.blue:
-        return ThemeColors(
-          primary: const Color(0xFF2196F3), // Colors.blue
-          secondary: const Color(0xFF03A9F4), // Colors.lightBlue
-          background: const Color(0xFFF0F8FF),
+        return const ThemeColors(
+          primary: Color(0xFFFF4081),
+          secondary: Color(0xFFE91E63),
+          background: Color(0xFFFFF0F5),
           surface: Colors.white,
         );
       case AppThemeType.purple:
-        return ThemeColors(
-          primary: const Color(0xFF9C27B0), // Colors.purple
-          secondary: const Color(0xFF673AB7), // Colors.deepPurple
-          background: const Color(0xFFF8F0FF),
-          surface: Colors.white,
-        );
-      case AppThemeType.green:
-        return ThemeColors(
-          primary: const Color(0xFF4CAF50), // Colors.green
-          secondary: const Color(0xFF8BC34A), // Colors.lightGreen
-          background: const Color(0xFFF0FFF0),
-          surface: Colors.white,
-        );
-      case AppThemeType.orange:
-        return ThemeColors(
-          primary: const Color(0xFFFF9800), // Colors.orange
-          secondary: const Color(0xFFFF5722), // Colors.deepOrange
-          background: const Color(0xFFFFF8F0),
+        return const ThemeColors(
+          primary: Color(0xFF9C27B0),
+          secondary: Color(0xFF673AB7),
+          background: Color(0xFFF8F0FF),
           surface: Colors.white,
         );
       case AppThemeType.teal:
-        return ThemeColors(
-          primary: const Color(0xFF009688), // Colors.teal
-          secondary: const Color(0xFF00BCD4), // Colors.cyan
-          background: const Color(0xFFF0FFFF),
+        return const ThemeColors(
+          primary: Color(0xFF009688),
+          secondary: Color(0xFF00BCD4),
+          background: Color(0xFFF0FFFF),
           surface: Colors.white,
         );
-      case AppThemeType.custom:
-        return ThemeColors(
-          primary: _customPrimaryColor.value,
-          secondary: _customSecondaryColor.value,
-          background: const Color(0xFFFAFAFA), // Colors.grey[50]
+      default:
+        return const ThemeColors(
+          primary: Color(0xFFFF4081),
+          secondary: Color(0xFFE91E63),
+          background: Color(0xFFFFF0F5),
           surface: Colors.white,
         );
     }
   }
 
-  // Dapatkan gradient background berdasarkan tema
+  // Dapatkan gradient background dengan cache
   LinearGradient getBackgroundGradient() {
-    final colors = getThemeColors();
+    _cacheThemeColors();
+    final colors = _cachedColors!;
 
     return LinearGradient(
       begin: Alignment.topLeft,
@@ -230,13 +212,14 @@ class ThemeController extends GetxController {
     );
   }
 
-  // Dapatkan decorasi container dengan tema
+  // Dapatkan dekorasi container dengan tema dan cache
   BoxDecoration getThemedDecoration({
     double borderRadius = 12,
     bool withShadow = true,
     bool withGradient = false,
   }) {
-    final colors = getThemeColors();
+    _cacheThemeColors();
+    final colors = _cachedColors!;
 
     return BoxDecoration(
       color: withGradient ? null : colors.surface,
@@ -260,17 +243,40 @@ class ThemeController extends GetxController {
           : null,
     );
   }
+
+  // Method untuk inisialisasi controller
+  static Future<void> initialize() async {
+    try {
+      await GetStorage.init();
+      Get.put(ThemeController());
+    } catch (e) {
+      print('Error menginisialisasi ThemeController: $e');
+    }
+  }
+
+  // Method untuk cek apakah controller sudah diinisialisasi
+  static bool get isInitialized {
+    try {
+      Get.find<ThemeController>();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Method untuk force refresh cache (jika diperlukan)
+  void refreshCache() {
+    _lastCachedTheme = null;
+    _cacheThemeColors();
+    update();
+  }
 }
 
-// Enum untuk tipe tema
+// Enum untuk tipe tema (hanya 3 pilihan)
 enum AppThemeType {
   pink,
-  blue,
   purple,
-  green,
-  orange,
   teal,
-  custom,
 }
 
 // Class untuk menyimpan warna tema
@@ -286,26 +292,48 @@ class ThemeColors {
     required this.background,
     required this.surface,
   });
+
+  // Operator == untuk perbandingan
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ThemeColors &&
+        other.primary == primary &&
+        other.secondary == secondary &&
+        other.background == background &&
+        other.surface == surface;
+  }
+
+  @override
+  int get hashCode {
+    return primary.hashCode ^
+        secondary.hashCode ^
+        background.hashCode ^
+        surface.hashCode;
+  }
 }
 
-// Extension untuk mendapatkan nama tema
+// Extension untuk mendapatkan nama tema dalam bahasa Indonesia
 extension AppThemeTypeExtension on AppThemeType {
   String get name {
     switch (this) {
       case AppThemeType.pink:
         return 'Pink';
-      case AppThemeType.blue:
-        return 'Blue';
       case AppThemeType.purple:
-        return 'Purple';
-      case AppThemeType.green:
-        return 'Green';
-      case AppThemeType.orange:
-        return 'Orange';
+        return 'Ungu';
       case AppThemeType.teal:
-        return 'Teal';
-      case AppThemeType.custom:
-        return 'Custom';
+        return 'Tosca';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case AppThemeType.pink:
+        return 'Tema Pink - Feminin dan Elegan';
+      case AppThemeType.purple:
+        return 'Tema Ungu - Mewah dan Misterius';
+      case AppThemeType.teal:
+        return 'Tema Tosca - Segar dan Modern';
     }
   }
 
@@ -313,18 +341,10 @@ extension AppThemeTypeExtension on AppThemeType {
     switch (this) {
       case AppThemeType.pink:
         return Icons.favorite;
-      case AppThemeType.blue:
-        return Icons.water_drop;
       case AppThemeType.purple:
         return Icons.auto_awesome;
-      case AppThemeType.green:
-        return Icons.eco;
-      case AppThemeType.orange:
-        return Icons.wb_sunny;
       case AppThemeType.teal:
         return Icons.spa;
-      case AppThemeType.custom:
-        return Icons.palette;
     }
   }
 }

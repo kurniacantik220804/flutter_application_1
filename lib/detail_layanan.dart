@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:get/get.dart';
+import 'theme_controller.dart';
+import 'theme_widgets.dart';
 
-class DetailLayanan extends StatelessWidget {
+class DetailLayanan extends StatefulWidget {
   final String title;
   final String harga;
   final IconData icon;
@@ -16,73 +19,119 @@ class DetailLayanan extends StatelessWidget {
   });
 
   @override
+  State<DetailLayanan> createState() => _DetailLayananState();
+}
+
+class _DetailLayananState extends State<DetailLayanan> {
+  final ThemeController _themeController = Get.find<ThemeController>();
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.pinkAccent,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Icon(
-                icon,
-                size: 80,
-                color: Colors.pinkAccent,
-              ),
+    return GetBuilder<ThemeController>(
+      builder: (themeController) {
+        final colors = themeController.getThemeColors();
+
+        return ThemedScaffold(
+          appBar: ThemedAppBar(
+            title: widget.title,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon Section with themed styling
+                Center(
+                  child: AnimatedThemedContainer(
+                    padding: const EdgeInsets.all(20),
+                    withGradient: true,
+                    child: Icon(
+                      widget.icon,
+                      size: 80,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Title Section
+                ThemedCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ThemedText(
+                        text: 'Harga: ${widget.harga}',
+                        isPrimary: true,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Description Section
+                ThemedCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ThemedText(
+                        text: 'Deskripsi Layanan:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.deskripsi.isNotEmpty 
+                          ? widget.deskripsi 
+                          : 'Layanan ${widget.title} kami menawarkan pengalaman terbaik dengan '
+                            'staff profesional dan produk berkualitas tinggi. '
+                            'Kami menjamin kepuasan Anda dengan hasil yang maksimal.',
+                        style: const TextStyle(fontSize: 16, height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Booking Form Section
+                ThemedCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ThemedText(
+                        text: 'Pilih Tanggal & Waktu:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      BookingForm(
+                        title: widget.title,
+                        price: widget.harga,
+                        icon: widget.icon.codePoint,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Harga: $harga',
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.pinkAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Deskripsi Layanan:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Layanan $title kami menawarkan pengalaman terbaik dengan '
-              'staff profesional dan produk berkualitas tinggi. '
-              'Kami menjamin kepuasan Anda dengan hasil yang maksimal.',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Pilih Tanggal & Waktu:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            BookingForm(
-              title: title,
-              price: harga,
-              icon: icon.codePoint,
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -93,11 +142,11 @@ class BookingForm extends StatefulWidget {
   final int icon;
 
   const BookingForm({
-    Key? key,
+    super.key,
     required this.title,
     required this.price,
     required this.icon,
-  }) : super(key: key);
+  });
 
   @override
   State<BookingForm> createState() => _BookingFormState();
@@ -109,6 +158,7 @@ class _BookingFormState extends State<BookingForm> {
   TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
   String selectedPayment = 'Cash';
   bool isLoading = false;
+  final ThemeController _themeController = Get.find<ThemeController>();
 
   final List<String> availablePayments = [
     'Cash',
@@ -118,7 +168,9 @@ class _BookingFormState extends State<BookingForm> {
   ];
 
   Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+    final colors = _themeController.getThemeColors();
+    
+    final picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime.now(),
@@ -126,8 +178,8 @@ class _BookingFormState extends State<BookingForm> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Colors.pinkAccent,
+            colorScheme: ColorScheme.light(
+              primary: colors.primary,
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -136,6 +188,7 @@ class _BookingFormState extends State<BookingForm> {
         );
       },
     );
+
     if (picked != null && picked != selectedDate) {
       setState(() {
         selectedDate = picked;
@@ -144,14 +197,16 @@ class _BookingFormState extends State<BookingForm> {
   }
 
   Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
+    final colors = _themeController.getThemeColors();
+    
+    final picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Colors.pinkAccent,
+            colorScheme: ColorScheme.light(
+              primary: colors.primary,
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -160,6 +215,7 @@ class _BookingFormState extends State<BookingForm> {
         );
       },
     );
+
     if (picked != null && picked != selectedTime) {
       setState(() {
         selectedTime = picked;
@@ -177,10 +233,8 @@ class _BookingFormState extends State<BookingForm> {
       final booking = {
         'title': widget.title,
         'price': widget.price,
-        'date':
-            '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-        'time':
-            '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
+        'date': '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+        'time': '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
         'payment': selectedPayment,
         'icon': widget.icon,
       };
@@ -208,7 +262,7 @@ class _BookingFormState extends State<BookingForm> {
           ),
         );
 
-        // Navigate back to the previous screen without popping to splash
+        // Navigate back to the previous screen
         Navigator.pop(context);
       });
     }
@@ -216,120 +270,131 @@ class _BookingFormState extends State<BookingForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Date picker
-          InkWell(
-            onTap: () => _selectDate(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                    style: const TextStyle(fontSize: 16),
+    return GetBuilder<ThemeController>(
+      builder: (themeController) {
+        final colors = themeController.getThemeColors();
+        
+        return Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date picker
+              InkWell(
+                onTap: () => _selectDate(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: colors.primary.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                    color: colors.primary.withOpacity(0.05),
                   ),
-                  const Icon(Icons.calendar_today, color: Colors.pinkAccent),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Time picker
-          InkWell(
-            onTap: () => _selectTime(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
-                    style: const TextStyle(fontSize: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, color: colors.primary, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                      Icon(Icons.arrow_forward_ios, color: colors.primary, size: 16),
+                    ],
                   ),
-                  const Icon(Icons.access_time, color: Colors.pinkAccent),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Payment method
-          const Text(
-            'Metode Pembayaran:',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedPayment,
-                isExpanded: true,
-                icon:
-                    const Icon(Icons.arrow_drop_down, color: Colors.pinkAccent),
-                items: availablePayments.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    selectedPayment = newValue!;
-                  });
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Submit button
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : _submitBooking,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pinkAccent,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.pink[200],
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: isLoading
-                  ? const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    )
-                  : const Text(
-                      'Booking Sekarang',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+              const SizedBox(height: 16),
+
+              // Time picker
+              InkWell(
+                onTap: () => _selectTime(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: colors.primary.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                    color: colors.primary.withOpacity(0.05),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, color: colors.primary, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
                       ),
-                    ),
-            ),
+                      Icon(Icons.arrow_forward_ios, color: colors.primary, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Payment method
+              const ThemedText(
+                text: 'Metode Pembayaran:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border.all(color: colors.primary.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                  color: colors.primary.withOpacity(0.05),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedPayment,
+                    isExpanded: true,
+                    icon: Icon(Icons.arrow_drop_down, color: colors.primary),
+                    items: availablePayments.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (newValue) {
+                      setState(() {
+                        selectedPayment = newValue!;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Submit button
+              SizedBox(
+                width: double.infinity,
+                child: ThemedButton(
+                  text: 'Booking Sekarang',
+                  height: 50,
+                  onPressed: isLoading ? null : _submitBooking,
+                ),
+              ),
+              
+              // Loading indicator when booking
+              if (isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

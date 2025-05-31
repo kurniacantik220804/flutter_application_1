@@ -11,6 +11,7 @@ import 'login_2_screen.dart';
 import 'detail_layanan.dart';
 import 'riwayat_screen.dart';
 import 'promo_screen.dart';
+import 'beauty_tips_screen.dart'; // Import beauty tips screen
 import 'settings_screen.dart';
 import 'theme_controller.dart'; // Import theme controller
 import 'theme_widgets.dart'; // Import themed widgets
@@ -141,11 +142,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             child: IndexedStack(index: _bottomNavIndex, children: pages),
           ),
           floatingActionButton: ThemedFloatingActionButton(
-            icon: Icons.spa,
+            icon: Icons.lightbulb_outline, // Changed from spa to lightbulb for beauty tips
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const PromoScreen()),
+                MaterialPageRoute(builder: (context) => const BeautyTipsScreen()),
               );
             },
           ),

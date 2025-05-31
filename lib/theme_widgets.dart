@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'theme_controller.dart';
 
 // Themed Background Widget
-class ThemedBackground extends StatelessWidget {
+class ThemedBackground extends StatefulWidget {
   final Widget child;
 
   const ThemedBackground({
@@ -12,22 +12,26 @@ class ThemedBackground extends StatelessWidget {
   });
 
   @override
+  State<ThemedBackground> createState() => _ThemedBackgroundState();
+}
+
+class _ThemedBackgroundState extends State<ThemedBackground> {
+  @override
   Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: controller.getBackgroundGradient(),
-          ),
-          child: child,
-        );
-      },
-    );
+    return Obx(() {
+      final controller = ThemeController.to;
+      return Container(
+        decoration: BoxDecoration(
+          gradient: controller.getBackgroundGradient(),
+        ),
+        child: widget.child,
+      );
+    });
   }
 }
 
 // Themed Card Widget
-class ThemedCard extends StatelessWidget {
+class ThemedCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -48,37 +52,41 @@ class ThemedCard extends StatelessWidget {
   });
 
   @override
+  State<ThemedCard> createState() => _ThemedCardState();
+}
+
+class _ThemedCardState extends State<ThemedCard> {
+  @override
   Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        Widget cardWidget = Container(
-          margin: margin,
-          decoration: controller.getThemedDecoration(
-            borderRadius: borderRadius,
-            withShadow: withShadow,
-            withGradient: withGradient,
-          ),
-          child: Padding(
-            padding: padding ?? const EdgeInsets.all(16),
-            child: child,
-          ),
+    return Obx(() {
+      final controller = ThemeController.to;
+      Widget cardWidget = Container(
+        margin: widget.margin,
+        decoration: controller.getThemedDecoration(
+          borderRadius: widget.borderRadius,
+          withShadow: widget.withShadow,
+          withGradient: widget.withGradient,
+        ),
+        child: Padding(
+          padding: widget.padding ?? const EdgeInsets.all(16),
+          child: widget.child,
+        ),
+      );
+
+      if (widget.onTap != null) {
+        return GestureDetector(
+          onTap: widget.onTap,
+          child: cardWidget,
         );
+      }
 
-        if (onTap != null) {
-          return GestureDetector(
-            onTap: onTap,
-            child: cardWidget,
-          );
-        }
-
-        return cardWidget;
-      },
-    );
+      return cardWidget;
+    });
   }
 }
 
 // Themed Button Widget
-class ThemedButton extends StatelessWidget {
+class ThemedButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final IconData? icon;
@@ -97,47 +105,51 @@ class ThemedButton extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
+  State<ThemedButton> createState() => _ThemedButtonState();
+}
 
-        return SizedBox(
-          width: width,
-          height: height,
-          child: isOutlined
-              ? OutlinedButton.icon(
-                  onPressed: onPressed,
-                  icon: icon != null ? Icon(icon) : const SizedBox.shrink(),
-                  label: Text(text),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: colors.primary,
-                    side: BorderSide(color: colors.primary),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                )
-              : ElevatedButton.icon(
-                  onPressed: onPressed,
-                  icon: icon != null ? Icon(icon) : const SizedBox.shrink(),
-                  label: Text(text),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+class _ThemedButtonState extends State<ThemedButton> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
+
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: widget.isOutlined
+            ? OutlinedButton.icon(
+                onPressed: widget.onPressed,
+                icon: widget.icon != null ? Icon(widget.icon) : const SizedBox.shrink(),
+                label: Text(widget.text),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.primary,
+                  side: BorderSide(color: colors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-        );
-      },
-    );
+              )
+            : ElevatedButton.icon(
+                onPressed: widget.onPressed,
+                icon: widget.icon != null ? Icon(widget.icon) : const SizedBox.shrink(),
+                label: Text(widget.text),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+      );
+    });
   }
 }
 
 // Themed App Bar
-class ThemedAppBar extends StatelessWidget implements PreferredSizeWidget {
+class ThemedAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
   final Widget? leading;
@@ -152,39 +164,43 @@ class ThemedAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
-
-        return AppBar(
-          title: Text(title),
-          actions: actions,
-          leading: leading,
-          automaticallyImplyLeading: automaticallyImplyLeading,
-          backgroundColor: colors.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [colors.primary, colors.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  State<ThemedAppBar> createState() => _ThemedAppBarState();
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
+class _ThemedAppBarState extends State<ThemedAppBar> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
+
+      return AppBar(
+        title: Text(widget.title),
+        actions: widget.actions,
+        leading: widget.leading,
+        automaticallyImplyLeading: widget.automaticallyImplyLeading,
+        backgroundColor: colors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colors.primary, colors.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
 // Themed Icon Button
-class ThemedIconButton extends StatelessWidget {
+class ThemedIconButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final String? tooltip;
@@ -201,43 +217,47 @@ class ThemedIconButton extends StatelessWidget {
   });
 
   @override
+  State<ThemedIconButton> createState() => _ThemedIconButtonState();
+}
+
+class _ThemedIconButtonState extends State<ThemedIconButton> {
+  @override
   Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
 
-        Widget iconWidget = Icon(
-          icon,
-          size: size,
-          color: colors.primary,
+      Widget iconWidget = Icon(
+        widget.icon,
+        size: widget.size,
+        color: colors.primary,
+      );
+
+      if (widget.isCircular) {
+        return Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colors.primary.withOpacity(0.1),
+          ),
+          child: IconButton(
+            onPressed: widget.onPressed,
+            tooltip: widget.tooltip,
+            icon: iconWidget,
+          ),
         );
+      }
 
-        if (isCircular) {
-          return Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: colors.primary.withOpacity(0.1),
-            ),
-            child: IconButton(
-              onPressed: onPressed,
-              tooltip: tooltip,
-              icon: iconWidget,
-            ),
-          );
-        }
-
-        return IconButton(
-          onPressed: onPressed,
-          tooltip: tooltip,
-          icon: iconWidget,
-        );
-      },
-    );
+      return IconButton(
+        onPressed: widget.onPressed,
+        tooltip: widget.tooltip,
+        icon: iconWidget,
+      );
+    });
   }
 }
 
 // Themed Text Widget dengan warna otomatis
-class ThemedText extends StatelessWidget {
+class ThemedText extends StatefulWidget {
   final String text;
   final TextStyle? style;
   final bool isPrimary;
@@ -256,33 +276,37 @@ class ThemedText extends StatelessWidget {
   });
 
   @override
+  State<ThemedText> createState() => _ThemedTextState();
+}
+
+class _ThemedTextState extends State<ThemedText> {
+  @override
   Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
 
-        Color? textColor;
-        if (isPrimary) {
-          textColor = colors.primary;
-        } else if (isSecondary) {
-          textColor = colors.secondary;
-        }
+      Color? textColor;
+      if (widget.isPrimary) {
+        textColor = colors.primary;
+      } else if (widget.isSecondary) {
+        textColor = colors.secondary;
+      }
 
-        return Text(
-          text,
-          style: (style ?? const TextStyle()).copyWith(
-            color: textColor ?? style?.color,
-          ),
-          textAlign: textAlign,
-          maxLines: maxLines,
-        );
-      },
-    );
+      return Text(
+        widget.text,
+        style: (widget.style ?? const TextStyle()).copyWith(
+          color: textColor ?? widget.style?.color,
+        ),
+        textAlign: widget.textAlign,
+        maxLines: widget.maxLines,
+      );
+    });
   }
 }
 
 // Themed Container dengan animasi
-class AnimatedThemedContainer extends StatelessWidget {
+class AnimatedThemedContainer extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -303,29 +327,33 @@ class AnimatedThemedContainer extends StatelessWidget {
   });
 
   @override
+  State<AnimatedThemedContainer> createState() => _AnimatedThemedContainerState();
+}
+
+class _AnimatedThemedContainerState extends State<AnimatedThemedContainer> {
+  @override
   Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        return AnimatedContainer(
-          duration: duration,
-          margin: margin,
-          decoration: controller.getThemedDecoration(
-            borderRadius: borderRadius,
-            withShadow: withShadow,
-            withGradient: withGradient,
-          ),
-          child: Padding(
-            padding: padding ?? const EdgeInsets.all(16),
-            child: child,
-          ),
-        );
-      },
-    );
+    return Obx(() {
+      final controller = ThemeController.to;
+      return AnimatedContainer(
+        duration: widget.duration,
+        margin: widget.margin,
+        decoration: controller.getThemedDecoration(
+          borderRadius: widget.borderRadius,
+          withShadow: widget.withShadow,
+          withGradient: widget.withGradient,
+        ),
+        child: Padding(
+          padding: widget.padding ?? const EdgeInsets.all(16),
+          child: widget.child,
+        ),
+      );
+    });
   }
 }
 
 // Themed Floating Action Button
-class ThemedFloatingActionButton extends StatelessWidget {
+class ThemedFloatingActionButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final String? tooltip;
@@ -340,26 +368,30 @@ class ThemedFloatingActionButton extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
+  State<ThemedFloatingActionButton> createState() => _ThemedFloatingActionButtonState();
+}
 
-        return FloatingActionButton(
-          onPressed: onPressed,
-          tooltip: tooltip,
-          mini: mini,
-          backgroundColor: colors.primary,
-          foregroundColor: Colors.white,
-          child: Icon(icon),
-        );
-      },
-    );
+class _ThemedFloatingActionButtonState extends State<ThemedFloatingActionButton> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
+
+      return FloatingActionButton(
+        onPressed: widget.onPressed,
+        tooltip: widget.tooltip,
+        mini: widget.mini,
+        backgroundColor: colors.primary,
+        foregroundColor: Colors.white,
+        child: Icon(widget.icon),
+      );
+    });
   }
 }
 
 // Themed Bottom Navigation Bar
-class ThemedBottomNavigationBar extends StatelessWidget {
+class ThemedBottomNavigationBar extends StatefulWidget {
   final int currentIndex;
   final Function(int) onTap;
   final List<BottomNavigationBarItem> items;
@@ -372,27 +404,31 @@ class ThemedBottomNavigationBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
+  State<ThemedBottomNavigationBar> createState() => _ThemedBottomNavigationBarState();
+}
 
-        return BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: onTap,
-          items: items,
-          selectedItemColor: colors.primary,
-          unselectedItemColor: Colors.grey,
-          backgroundColor: Colors.white,
-          type: BottomNavigationBarType.fixed,
-        );
-      },
-    );
+class _ThemedBottomNavigationBarState extends State<ThemedBottomNavigationBar> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
+
+      return BottomNavigationBar(
+        currentIndex: widget.currentIndex,
+        onTap: widget.onTap,
+        items: widget.items,
+        selectedItemColor: colors.primary,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
+      );
+    });
   }
 }
 
 // Themed Scaffold
-class ThemedScaffold extends StatelessWidget {
+class ThemedScaffold extends StatefulWidget {
   final Widget body;
   final PreferredSizeWidget? appBar;
   final Widget? floatingActionButton;
@@ -415,25 +451,26 @@ class ThemedScaffold extends StatelessWidget {
   });
 
   @override
+  State<ThemedScaffold> createState() => _ThemedScaffoldState();
+}
+
+class _ThemedScaffoldState extends State<ThemedScaffold> {
+  @override
   Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        return Scaffold(
-          appBar: appBar,
-          extendBody: extendBody,
-          floatingActionButton: floatingActionButton,
-          floatingActionButtonLocation: floatingActionButtonLocation,
-          bottomNavigationBar: bottomNavigationBar,
-          drawer: drawer,
-          body: withBackground ? ThemedBackground(child: body) : body,
-        );
-      },
+    return Scaffold(
+      appBar: widget.appBar,
+      extendBody: widget.extendBody,
+      floatingActionButton: widget.floatingActionButton,
+      floatingActionButtonLocation: widget.floatingActionButtonLocation,
+      bottomNavigationBar: widget.bottomNavigationBar,
+      drawer: widget.drawer,
+      body: widget.withBackground ? ThemedBackground(child: widget.body) : widget.body,
     );
   }
 }
 
 // Themed ListTile
-class ThemedListTile extends StatelessWidget {
+class ThemedListTile extends StatefulWidget {
   final Widget? leading;
   final Widget? title;
   final Widget? subtitle;
@@ -454,29 +491,33 @@ class ThemedListTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
+  State<ThemedListTile> createState() => _ThemedListTileState();
+}
 
-        return ListTile(
-          leading: leading,
-          title: title,
-          subtitle: subtitle,
-          trailing: trailing,
-          onTap: onTap,
-          contentPadding: contentPadding,
-          selected: selected,
-          selectedTileColor: colors.primary.withOpacity(0.1),
-          selectedColor: colors.primary,
-        );
-      },
-    );
+class _ThemedListTileState extends State<ThemedListTile> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
+
+      return ListTile(
+        leading: widget.leading,
+        title: widget.title,
+        subtitle: widget.subtitle,
+        trailing: widget.trailing,
+        onTap: widget.onTap,
+        contentPadding: widget.contentPadding,
+        selected: widget.selected,
+        selectedTileColor: colors.primary.withOpacity(0.1),
+        selectedColor: colors.primary,
+      );
+    });
   }
 }
 
 // Themed Divider
-class ThemedDivider extends StatelessWidget {
+class ThemedDivider extends StatefulWidget {
   final double height;
   final double thickness;
   final double indent;
@@ -491,19 +532,23 @@ class ThemedDivider extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (controller) {
-        final colors = controller.getThemeColors();
+  State<ThemedDivider> createState() => _ThemedDividerState();
+}
 
-        return Divider(
-          height: height,
-          thickness: thickness,
-          indent: indent,
-          endIndent: endIndent,
-          color: colors.primary.withOpacity(0.2),
-        );
-      },
-    );
+class _ThemedDividerState extends State<ThemedDivider> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final controller = ThemeController.to;
+      final colors = controller.getThemeColors();
+
+      return Divider(
+        height: widget.height,
+        thickness: widget.thickness,
+        indent: widget.indent,
+        endIndent: widget.endIndent,
+        color: colors.primary.withOpacity(0.2),
+      );
+    });
   }
 }

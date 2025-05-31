@@ -106,13 +106,6 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: _loadUserData,
-          tooltip: 'Refresh Data',
-        ),
-      ],
     );
   }
 
@@ -147,7 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             const SizedBox(height: 24),
 
-            // Settings Options
+            // Settings Options (hanya tema)
             _SettingsOptions(colors: colors),
             const SizedBox(height: 24),
 
@@ -334,58 +327,41 @@ class _SettingsOptions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Theme Settings
-        _SettingsItem(
-          colors: colors,
-          icon: Icons.palette,
-          title: 'Pengaturan Tema',
-          subtitle: 'Tema: ${ThemeController.to.selectedTheme.name}',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey[300]!, width: 1),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
-              ),
-            ],
-          ),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ThemeSettingsScreen(),
-              ),
-            );
-          },
-        ),
-
-        const SizedBox(height: 12),
-
-        // Dark Mode Toggle - Use Obx for reactive updates
+        // Theme Settings - Tema akan berubah otomatis tanpa refresh
         Obx(() {
-          final themeController = ThemeController.to;
           return _SettingsItem(
             colors: colors,
-            icon:
-                themeController.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-            title: 'Mode Gelap',
-            subtitle: themeController.isDarkMode ? 'Aktif' : 'Nonaktif',
-            trailing: Switch(
-              value: themeController.isDarkMode,
-              onChanged: (value) => themeController.toggleDarkMode(),
-              activeColor: colors.primary,
+            icon: Icons.palette,
+            title: 'Pengaturan Tema',
+            subtitle: 'Tema: ${ThemeController.to.selectedTheme.name}',
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: colors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey[300]!, width: 1),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey[400],
+                ),
+              ],
             ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ThemeSettingsScreen(),
+                ),
+              );
+            },
           );
         }),
       ],

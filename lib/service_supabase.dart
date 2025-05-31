@@ -207,4 +207,189 @@ class SupabaseService extends GetxController {
       print('Ensure profile exists error: $e');
     }
   }
+
+  // ==================== BOOKING FUNCTIONS ====================
+
+  // Create new booking
+  Future<Map<String, dynamic>?> createBooking({
+    required String title,
+    required String price,
+    required DateTime bookingDate,
+    required String bookingTime,
+    required String paymentMethod,
+    required int icon,
+  }) async {
+    try {
+      final user = currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final booking = {
+        'user_id': user.id,
+        'title': title,
+        'price': price,
+        'booking_date': bookingDate.toIso8601String().split('T')[0], // Format: YYYY-MM-DD
+        'booking_time': bookingTime,
+        'payment_method': paymentMethod,
+        'icon': icon,
+        'status': 'Terjadwal',
+      };
+
+      final response = await _client
+          .from('bookings')
+          .insert(booking)
+          .select()
+          .single();
+
+      print('Booking created successfully: ${response['id']}');
+      return response;
+    } catch (e) {
+      print('Create booking error: $e');
+      rethrow;
+    }
+  }
+
+  // Get all bookings for current user
+  Future<List<Map<String, dynamic>>> getUserBookings() async {
+    try {
+      final user = currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final response = await _client
+          .from('bookings')
+          .select()
+          .eq('user_id', user.id)
+          .order('booking_date', ascending: false)
+          .order('booking_time', ascending: false);
+
+      print('Retrieved ${response.length} bookings');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Get user bookings error: $e');
+      rethrow;
+    }
+  }
+
+  // Get bookings by status
+  Future<List<Map<String, dynamic>>> getBookingsByStatus(String status) async {
+    try {
+      final user = currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final response = await _client
+          .from('bookings')
+          .select()
+          .eq('user_id', user.id)
+          .eq('status', status)
+          .order('booking_date', ascending: false)
+          .order('booking_time', ascending: false);
+
+      print('Retrieved ${response.length} bookings with status: $status');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Get bookings by status error: $e');
+      rethrow;
+    }
+  }
+
+  // Update booking status
+  Future<Map<String, dynamic>?> updateBookingStatus({
+    required String bookingId,
+    required String newStatus,
+  }) async {
+    try {
+      final user = currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final response = await _client
+          .from('bookings')
+          .update({'status': newStatus})
+          .eq('id', bookingId)
+          .eq('user_id', user.id) // Ensure user can only update their own bookings
+          .select()
+          .single();
+
+      print('Booking status updated successfully: $bookingId -> $newStatus');
+      return response;
+    } catch (e) {
+      print('Update booking status error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete booking
+  Future<void> deleteBooking(String bookingId) async {
+    try {
+      final user = currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      await _client
+          .from('bookings')
+          .delete()
+          .eq('id', bookingId)
+          .eq('user_id', user.id); // Ensure user can only delete their own bookings
+
+      print('Booking deleted successfully: $bookingId');
+    } catch (e) {
+      print('Delete booking error: $e');
+      rethrow;
+    }
+  }
+
+  // Get upcoming bookings (today and future)
+  Future<List<Map<String, dynamic>>> getUpcomingBookings() async {
+    try {
+      final user = currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final today = DateTime.now().toIso8601String().split('T')[0];
+
+      final response = await _client
+          .from('bookings')
+          .select()
+          .eq('user_id', user.id)
+          .eq('status', 'Terjadwal')
+          .gte('booking_date', today)
+          .order('booking_date', ascending: true)
+          .order('booking_time', ascending: true);
+
+      print('Retrieved ${response.length} upcoming bookings');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Get upcoming bookings error: $e');
+      rethrow;
+    }
+  }
+
+  // Get booking statistics
+  Future<Map<String, int>> getBookingStatistics() async {
+    try {
+      final user = currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final allBookings = await _client
+          .from('bookings')
+          .select('status')
+          .eq('user_id', user.id);
+
+      final stats = <String, int>{
+        'total': allBookings.length,
+        'terjadwal': 0,
+        'selesai': 0,
+        'dibatalkan': 0,
+      };
+
+      for (final booking in allBookings) {
+        final status = booking['status'].toString().toLowerCase();
+        if (stats.containsKey(status)) {
+          stats[status] = stats[status]! + 1;
+        }
+      }
+
+      print('Booking statistics: $stats');
+      return stats;
+    } catch (e) {
+      print('Get booking statistics error: $e');
+      return {'total': 0, 'terjadwal': 0, 'selesai': 0, 'dibatalkan': 0};
+    }
+  }
 }

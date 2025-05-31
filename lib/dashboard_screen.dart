@@ -5,9 +5,9 @@ import 'package:get/get.dart';
 import 'detail_layanan.dart';
 import 'promo_screen.dart';
 import 'riwayat_screen.dart';
-import 'beauty_tips_screen.dart';
 import 'theme_controller.dart';
 import 'theme_widgets.dart';
+import 'service_supabase.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,6 +19,17 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with AutomaticKeepAliveClientMixin {
   Future<bool>? _upcomingBookingsFuture;
+  late ThemeController _themeController;
+  String _userName = 'Pelanggan';
+  
+  // Inisialisasi dengan nilai default untuk menghindari null
+  ThemeColors _cachedColors = const ThemeColors(
+    primary: Color(0xFFFF4081),
+    secondary: Color(0xFFE91E63),
+    background: Color(0xFFFFF0F5),
+    surface: Colors.white,
+  );
+  AppThemeType? _cachedTheme;
 
   @override
   bool get wantKeepAlive => true;
@@ -26,44 +37,146 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
+    _initializeController();
     _upcomingBookingsFuture = _checkForUpcomingBookings();
+    _loadUserName();
+  }
+
+  void _initializeController() {
+    try {
+      _themeController = Get.find<ThemeController>();
+      _updateCachedTheme();
+    } catch (e) {
+      // Fallback jika controller belum diinisialisasi
+      Get.put(ThemeController());
+      _themeController = Get.find<ThemeController>();
+      _updateCachedTheme();
+    }
+  }
+
+  void _updateCachedTheme() {
+    try {
+      final currentTheme = _themeController.selectedTheme;
+      if (_cachedTheme != currentTheme) {
+        _cachedTheme = currentTheme;
+        _cachedColors = _themeController.getThemeColors();
+      }
+    } catch (e) {
+      print('Error updating cached theme: $e');
+      // Gunakan default colors jika ada error
+    }
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final supabaseService = SupabaseService.to;
+      final user = supabaseService.currentUser;
+      
+      if (user != null) {
+        final profile = await supabaseService.getUserProfile();
+        
+        if (profile != null && profile['username'] != null) {
+          if (mounted) {
+            setState(() {
+              _userName = profile['username'];
+            });
+          }
+        } else {
+          final fullName = user.userMetadata?['full_name'];
+          if (fullName != null && fullName.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _userName = fullName;
+              });
+            }
+          } else {
+            final email = user.email;
+            if (email != null && mounted) {
+              setState(() {
+                _userName = email.split('@')[0];
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error loading user name: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    return GetBuilder<ThemeController>(
-      builder: (themeController) {
-        final colors = themeController.getThemeColors();
+    // Gunakan Obx untuk konsistensi dengan theme widgets lainnya
+    return Obx(() {
+      // Pastikan controller masih ada
+      if (!Get.isRegistered<ThemeController>()) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
 
-        return ThemedScaffold(
-          appBar: ThemedAppBar(
-            title: 'Salon Cantik',
-            automaticallyImplyLeading: false,
-            actions: [
-              ThemedIconButton(
-                icon: Icons.notifications_outlined,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notifikasi terbaru')),
-                  );
-                },
-              ),
-            ],
+      _updateCachedTheme();
+      
+      return Scaffold(
+        backgroundColor: _cachedColors.background,
+        appBar: _buildOptimizedAppBar(),
+        body: _buildOptimizedBody(),
+      );
+    });
+  }
+
+  PreferredSizeWidget _buildOptimizedAppBar() {
+    return AppBar(
+      title: const Text('Salon Cantik'),
+      automaticallyImplyLeading: false,
+      backgroundColor: _cachedColors.primary,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_cachedColors.primary, _cachedColors.secondary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          body: SafeArea(
-            child: SingleChildScrollView(
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () {
+            // Handle notification action
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOptimizedBody() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _cachedColors.background,
+            _cachedColors.primary.withOpacity(0.1),
+            _cachedColors.secondary.withOpacity(0.05),
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: CustomScrollView( // Ganti SingleChildScrollView dengan CustomScrollView
+          slivers: [
+            SliverPadding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildGreetingSection(colors),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildOptimizedGreetingSection(),
                   const SizedBox(height: 20),
-
-                  _buildPromoSection(context, colors),
-                  const SizedBox(height: 20),
-
+                  
                   FutureBuilder<bool>(
                     future: _upcomingBookingsFuture,
                     builder: (context, snapshot) {
@@ -74,29 +187,79 @@ class _DashboardScreenState extends State<DashboardScreen>
                     },
                   ),
 
-                  _buildFeaturedServicesHeader(context, colors),
+                  _buildFeaturedServicesHeader(),
                   const SizedBox(height: 12),
-
-                  _buildFeaturedServices(colors),
-                  const SizedBox(height: 20),
-
-                  _buildBeautyTipsSection(context, colors),
-
-                  // Padding bottom untuk mencegah overflow dengan bottom navigation
-                  const SizedBox(height: 120),
-                ],
+                ]),
               ),
             ),
-          ),
-        );
-      },
+            
+            // GridView sebagai Sliver untuk scroll yang lebih smooth
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                ),
+                delegate: SliverChildListDelegate([
+                  OptimizedLayananCard(
+                    icon: Icons.cut,
+                    title: 'Potong Rambut',
+                    harga: 'Rp 25.000',
+                    colors: _cachedColors,
+                  ),
+                  OptimizedLayananCard(
+                    icon: Icons.spa,
+                    title: 'Perawatan Wajah',
+                    harga: 'Rp 40.000',
+                    colors: _cachedColors,
+                  ),
+                  OptimizedLayananCard(
+                    icon: Icons.brush,
+                    title: 'Tata Rias',
+                    harga: 'Rp 70.000',
+                    colors: _cachedColors,
+                  ),
+                  OptimizedLayananCard(
+                    icon: Icons.local_florist,
+                    title: 'Perawatan Rambut',
+                    harga: 'Rp 30.000',
+                    colors: _cachedColors,
+                  ),
+                ]),
+              ),
+            ),
+            
+            // Tambah spacing di bawah
+            const SliverPadding(
+              padding: EdgeInsets.only(bottom: 120),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildGreetingSection(ThemeColors colors) {
-    return AnimatedThemedContainer(
+  Widget _buildOptimizedGreetingSection() {
+    return Container(
       padding: const EdgeInsets.all(20),
-      withGradient: true,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_cachedColors.primary, _cachedColors.secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: _cachedColors.primary.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Container(
@@ -106,13 +269,13 @@ class _DashboardScreenState extends State<DashboardScreen>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: colors.primary.withOpacity(0.3),
+                  color: _cachedColors.primary.withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: Icon(Icons.person, size: 35, color: colors.primary),
+            child: Icon(Icons.person, size: 35, color: _cachedColors.primary),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -127,9 +290,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
-                const Text(
-                  'Pelanggan Setia',
-                  style: TextStyle(
+                Text(
+                  _userName,
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -138,237 +301,24 @@ class _DashboardScreenState extends State<DashboardScreen>
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child:
-                const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildPromoSection(BuildContext context, ThemeColors colors) {
-    return ThemedCard(
-      padding: const EdgeInsets.all(16),
-      withGradient: false,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ThemedText(
-                  text: '🎉 PROMO SPESIAL',
-                  isPrimary: true,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Diskon 20% untuk\npelanggan baru!',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ThemedButton(
-                  text: 'Lihat Promo',
-                  height: 36,
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const PromoScreen()),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: colors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.card_giftcard, size: 40, color: colors.primary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturedServicesHeader(
-      BuildContext context, ThemeColors colors) {
+  Widget _buildFeaturedServicesHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const ThemedText(
-          text: 'Layanan Unggulan',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        TextButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Lihat semua layanan')),
-            );
-          },
-          child: ThemedText(
-            text: 'Lihat Semua',
-            isPrimary: true,
-            style: const TextStyle(fontSize: 12),
+        Text(
+          'Layanan Unggulan',
+          style: TextStyle(
+            fontSize: 18, 
+            fontWeight: FontWeight.bold,
+            color: _cachedColors.primary,
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFeaturedServices(ThemeColors colors) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.85,
-      children: [
-        LayananCard(
-          icon: Icons.cut,
-          title: 'Potong Rambut',
-          harga: 'Rp 25.000',
-          colors: colors,
-        ),
-        LayananCard(
-          icon: Icons.spa,
-          title: 'Facial Wajah',
-          harga: 'Rp 40.000',
-          colors: colors,
-        ),
-        LayananCard(
-          icon: Icons.brush,
-          title: 'Makeup',
-          harga: 'Rp 70.000',
-          colors: colors,
-        ),
-        LayananCard(
-          icon: Icons.local_florist,
-          title: 'Creambath',
-          harga: 'Rp 30.000',
-          colors: colors,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBeautyTipsSection(BuildContext context, ThemeColors colors) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const ThemedText(
-          text: 'Tips Kecantikan',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _buildTipCard(
-                context,
-                'Rambut Sehat',
-                'Konsumsi vitamin untuk rambut',
-                Icons.favorite,
-                colors,
-              ),
-              _buildTipCard(
-                context,
-                'Kulit Glowing',
-                'Tips perawatan kulit harian',
-                Icons.face,
-                colors,
-              ),
-              _buildTipCard(
-                context,
-                'Makeup Natural',
-                'Tutorial makeup untuk pemula',
-                Icons.brush,
-                colors,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTipCard(BuildContext context, String title, String content,
-      IconData icon, ThemeColors colors) {
-    return ThemedCard(
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(12),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const BeautyTipsScreen()),
-      ),
-      child: SizedBox(
-        width: 164, // 180 - 16 (padding)
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: colors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(icon, color: colors.primary, size: 16),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              content,
-              style: const TextStyle(fontSize: 11, color: Colors.black87),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ThemedText(
-                text: 'Detail',
-                isPrimary: true,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -381,18 +331,26 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
       return false;
     } catch (e) {
+      print('Error checking bookings: $e');
       return false;
     }
   }
+
+  @override
+  void dispose() {
+    // Cleanup jika diperlukan
+    super.dispose();
+  }
 }
 
-class LayananCard extends StatelessWidget {
+// OptimizedLayananCard tetap sama tapi dengan null check
+class OptimizedLayananCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String harga;
   final ThemeColors colors;
 
-  const LayananCard({
+  const OptimizedLayananCard({
     super.key,
     required this.icon,
     required this.title,
@@ -402,53 +360,67 @@ class LayananCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ThemedCard(
-      padding: const EdgeInsets.all(12),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DetailLayanan(
-            title: title,
-            harga: harga,
-            icon: icon,
-            deskripsi: _getLayananDeskripsi(title),
+    return Card(
+      color: Colors.white,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {
+          try {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DetailLayanan(
+                  title: title,
+                  harga: harga,
+                  icon: icon,
+                  deskripsi: _getLayananDeskripsi(title),
+                ),
+              ),
+            );
+          } catch (e) {
+            print('Error navigating to detail: $e');
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 35, color: colors.primary),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                harga,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Pesan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 35, color: colors.primary),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            harga,
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            decoration: BoxDecoration(
-              color: colors.primary,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              'Booking',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -456,12 +428,12 @@ class LayananCard extends StatelessWidget {
   String _getLayananDeskripsi(String title) {
     const deskripsiMap = {
       'Potong Rambut':
-          'Layanan potong rambut profesional sesuai dengan model yang diinginkan. Termasuk hair styling dan cuci rambut.',
-      'Facial Wajah':
-          'Perawatan wajah yang membantu membersihkan, menghidrasi, dan menyegarkan kulit wajah Anda.',
-      'Makeup':
+          'Layanan potong rambut profesional sesuai dengan model yang diinginkan. Termasuk penataan rambut dan cuci rambut.',
+      'Perawatan Wajah':
+          'Perawatan wajah yang membantu membersihkan, melembapkan, dan menyegarkan kulit wajah Anda.',
+      'Tata Rias':
           'Layanan rias wajah untuk berbagai acara formal maupun kasual dengan produk berkualitas tinggi.',
-      'Creambath':
+      'Perawatan Rambut':
           'Perawatan rambut intensif dengan krim nutrisi untuk menjaga kesehatan dan kilau rambut Anda.',
     };
 
