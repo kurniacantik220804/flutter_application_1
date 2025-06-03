@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/database/promo_service.dart';
 
 class PromoScreen extends StatefulWidget {
   const PromoScreen({super.key});
@@ -11,9 +12,16 @@ class PromoScreen extends StatefulWidget {
 
 class _PromoScreenState extends State<PromoScreen> {
   final ThemeController themeController = ThemeController.to;
+  final PromoService promoService = Get.put(PromoService());
 
-  // Daftar untuk melacak voucher yang sudah diklaim - updated untuk 4 voucher
-  final List<bool> _claimedVouchers = [false, false, false, false];
+  @override
+  void initState() {
+    super.initState();
+    // Load promo saat screen pertama kali dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      promoService.loadPromos();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,133 +43,130 @@ class _PromoScreenState extends State<PromoScreen> {
               ),
             ),
           ),
+          actions: [
+            // Tombol refresh
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => promoService.loadPromos(),
+            ),
+            // Menu dengan opsi tambahan
+            PopupMenuButton(
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 20),
+                      SizedBox(width: 8),
+                      Text('Info Promo'),
+                    ],
+                  ),
+                  onTap: () => _showPromoInfo(),
+                ),
+                PopupMenuItem(
+                  child: const Row(
+                    children: [
+                      Icon(Icons.restore, size: 20),
+                      SizedBox(width: 8),
+                      Text('Reset Promo (Testing)'),
+                    ],
+                  ),
+                  onTap: () => _confirmResetPromos(),
+                ),
+              ],
+            ),
+          ],
         ),
         body: Container(
           decoration: BoxDecoration(
             gradient: themeController.getBackgroundGradient(),
           ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Promo Spesial Salon Cantik',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: colors.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Dapatkan penawaran terbaik untuk perawatan kecantikan Anda',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 24),
+          child: RefreshIndicator(
+            onRefresh: () => promoService.loadPromos(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  _buildHeader(colors),
+                  const SizedBox(height: 24),
 
-                // Voucher 1 - Diskon Potong Rambut (30%)
-                if (!_claimedVouchers[0])
-                  _buildPromoCard(
-                    context,
-                    'Diskon 30% Potong Rambut',
-                    'Berlaku hingga 31 Mei 2025',
-                    'Nikmati potongan rambut dengan harga spesial! Dapatkan diskon 30% untuk layanan potong rambut kami.',
-                    colors.primary,
-                    Icons.cut,
-                    'Rp 25.000',
-                    'Rp 17.500',
-                    0,
-                  ),
+                  // Loading indicator
+                  if (promoService.isLoading.value)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else ...[
+                    // Promo statistics
+                    _buildPromoStatistics(colors),
+                    const SizedBox(height: 20),
 
-                // Voucher 2 - Diskon Perawatan Wajah (15%)
-                if (!_claimedVouchers[1])
-                  _buildPromoCard(
-                    context,
-                    'Diskon 15% Perawatan Wajah',
-                    'Berlaku hingga 15 Juni 2025',
-                    'Dapatkan perawatan wajah terbaik dengan diskon spesial 15% untuk semua layanan perawatan wajah.',
-                    colors.secondary,
-                    Icons.spa,
-                    'Rp 40.000',
-                    'Rp 34.000',
-                    1,
-                  ),
+                    // Available promos
+                    if (promoService.availablePromos.isNotEmpty) ...[
+                      _buildSectionHeader(
+                          'Promo Tersedia', colors.primary, Icons.local_offer),
+                      const SizedBox(height: 12),
+                      ...promoService.availablePromos
+                          .map((promo) => _buildPromoCard(
+                                context,
+                                promo,
+                                colors,
+                                false, // not claimed
+                              ))
+                          .toList(),
+                      const SizedBox(height: 20),
+                    ],
 
-                // Voucher 3 - Paket Hemat Makeup
-                if (!_claimedVouchers[2])
-                  _buildPromoCard(
-                    context,
-                    'Paket Hemat Makeup',
-                    'Stok terbatas!',
-                    'Paket spesial makeup untuk acara formal dengan harga spesial dan bonus produk kecantikan dari sponsor kami.',
-                    Colors.orange,
-                    Icons.brush,
-                    'Rp 70.000',
-                    'Rp 55.000',
-                    2,
-                  ),
-
-                // Voucher 4 - Free Layanan Catok Rambut
-                if (!_claimedVouchers[3])
-                  _buildPromoCard(
-                    context,
-                    'Free Layanan Catok Rambut',
-                    'Berlaku hingga 30 Juni 2025',
-                    'Dapatkan layanan catok rambut gratis untuk setiap pembelian layanan perawatan rambut lainnya.',
-                    Colors.purple,
-                    Icons.straighten,
-                    'Rp 20.000',
-                    'GRATIS',
-                    3,
-                  ),
-
-                // Pesan jika semua voucher sudah diklaim
-                if (_claimedVouchers.every((claimed) => claimed))
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    margin: const EdgeInsets.only(top: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.green,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Semua Promo Telah Diklaim!',
+                    // Claimed promos (collapsed section)
+                    if (promoService.claimedPromos.isNotEmpty) ...[
+                      ExpansionTile(
+                        leading: Icon(Icons.check_circle, color: Colors.green),
+                        title: Text(
+                          'Promo yang Sudah Diklaim (${promoService.claimedPromos.length})',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Terima kasih telah menggunakan semua promo kami. Nantikan promo menarik lainnya!',
-                          style: TextStyle(
-                            fontSize: 14,
                             color: Colors.grey[600],
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      ],
-                    ),
-                  ),
+                        subtitle: Text(
+                          'Promo yang sudah Anda gunakan (sekali pakai)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                        children: promoService.claimedPromos
+                            .map((promo) => _buildPromoCard(
+                                  context,
+                                  promo,
+                                  colors,
+                                  true, // claimed
+                                ))
+                            .toList(),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
 
-                // Bottom spacing
-                const SizedBox(height: 100),
-              ],
+                    // Message when all promos are claimed
+                    if (promoService.availablePromos.isEmpty &&
+                        promoService.claimedPromos.isNotEmpty)
+                      _buildAllClaimedMessage(),
+
+                    // Message when no promos available
+                    if (promoService.availablePromos.isEmpty &&
+                        promoService.claimedPromos.isEmpty)
+                      _buildNoPromosMessage(),
+                  ],
+
+                  // Bottom spacing
+                  const SizedBox(height: 100),
+                ],
+              ),
             ),
           ),
         ),
@@ -169,28 +174,164 @@ class _PromoScreenState extends State<PromoScreen> {
     });
   }
 
+  Widget _buildHeader(dynamic colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.card_giftcard,
+              color: colors.primary,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Promo Spesial Salon Cantik',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: colors.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Dapatkan penawaran terbaik untuk perawatan kecantikan Anda',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.orange.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.info_outline, size: 16, color: Colors.orange[700]),
+              const SizedBox(width: 4),
+              Text(
+                'Setiap promo hanya dapat diklaim sekali',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, Color color, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPromoStatistics(dynamic colors) {
+    final stats = promoService.getPromoStatistics();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.primary.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem(
+            'Total Promo',
+            '${stats['total']}',
+            Icons.local_offer,
+            colors.primary,
+          ),
+          _buildStatItem(
+            'Tersedia',
+            '${stats['available']}',
+            Icons.card_giftcard,
+            Colors.green,
+          ),
+          _buildStatItem(
+            'Diklaim',
+            '${stats['claimed']}',
+            Icons.check_circle,
+            Colors.orange,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+      String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPromoCard(
     BuildContext context,
-    String title,
-    String validity,
-    String description,
-    Color color,
-    IconData icon,
-    String originalPrice,
-    String promoPrice,
-    int voucherIndex,
+    Map<String, dynamic> promo,
+    dynamic colors,
+    bool isClaimed,
   ) {
+    Color cardColor = _getColorFromString(promo['color'], colors);
+    IconData cardIcon = _getIconFromString(promo['icon']);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
+      elevation: isClaimed ? 2 : 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
             colors: [
-              Colors.white,
-              color.withOpacity(0.05),
+              isClaimed ? Colors.grey[100]! : Colors.white,
+              isClaimed
+                  ? Colors.grey[200]!.withOpacity(0.5)
+                  : cardColor.withOpacity(0.05),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -206,10 +347,15 @@ class _PromoScreenState extends State<PromoScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
+                      color: isClaimed
+                          ? Colors.grey[300]
+                          : cardColor.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, color: color),
+                    child: Icon(
+                      cardIcon,
+                      color: isClaimed ? Colors.grey[600] : cardColor,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -217,14 +363,15 @@ class _PromoScreenState extends State<PromoScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
-                          style: const TextStyle(
+                          promo['title'],
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: isClaimed ? Colors.grey[600] : null,
                           ),
                         ),
                         Text(
-                          validity,
+                          promo['validity'],
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
@@ -233,65 +380,136 @@ class _PromoScreenState extends State<PromoScreen> {
                       ],
                     ),
                   ),
+                  if (isClaimed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Diklaim',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
               Text(
-                description,
-                style: const TextStyle(fontSize: 14),
+                promo['description'],
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isClaimed ? Colors.grey[600] : null,
+                ),
               ),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  RichText(
-                    text: TextSpan(
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (promoPrice != 'GRATIS') ...[
-                          TextSpan(
-                            text: '$originalPrice ',
+                        if (promo['promo_price'] != 'GRATIS' && !isClaimed)
+                          Text(
+                            '${promo['original_price']}',
                             style: TextStyle(
                               decoration: TextDecoration.lineThrough,
                               color: Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
-                        ],
-                        TextSpan(
-                          text: promoPrice,
+                        Text(
+                          promo['promo_price'],
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color:
-                                promoPrice == 'GRATIS' ? Colors.green : color,
-                            fontSize: 16,
+                            color: isClaimed
+                                ? Colors.grey[600]
+                                : (promo['promo_price'] == 'GRATIS'
+                                    ? Colors.green
+                                    : cardColor),
+                            fontSize: 18,
                           ),
                         ),
+                        if (promo['discount_percent'] > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            margin: const EdgeInsets.only(top: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${promo['discount_percent']}% OFF',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _claimedVouchers[voucherIndex] = true;
-                      });
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Promo $title berhasil diklaim!'),
-                          backgroundColor: color,
-                          duration: const Duration(seconds: 2),
+                  const SizedBox(width: 12),
+                  if (!isClaimed)
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        // Konfirmasi sebelum klaim
+                        final confirm =
+                            await _showClaimConfirmation(promo['title']);
+                        if (confirm == true) {
+                          await promoService.claimPromo(promo['title']);
+                        }
+                      },
+                      icon: const Icon(Icons.redeem, size: 18),
+                      label: const Text('Klaim'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: cardColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      child: const Text(
+                        'Sudah Diklaim',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                    child: const Text('Klaim'),
-                  ),
                 ],
               ),
             ],
@@ -299,5 +517,270 @@ class _PromoScreenState extends State<PromoScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAllClaimedMessage() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(top: 20),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green[200]!),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.celebration,
+            color: Colors.green,
+            size: 48,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Semua Promo Telah Diklaim!',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Selamat! Anda telah menggunakan semua promo yang tersedia. Nantikan promo menarik lainnya!',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoPromosMessage() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(top: 20),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            color: Colors.grey[600],
+            size: 48,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tidak Ada Promo Tersedia',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Saat ini tidak ada promo yang tersedia. Silakan cek kembali nanti untuk promo menarik!',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showClaimConfirmation(String promoTitle) {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.help_outline, color: Colors.orange),
+              const SizedBox(width: 8),
+              const Text('Konfirmasi Klaim Promo'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Apakah Anda yakin ingin mengklaim promo:'),
+              const SizedBox(height: 8),
+              Text(
+                '"$promoTitle"',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Promo hanya dapat diklaim sekali dan tidak dapat dibatalkan.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange[800],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Ya, Klaim'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPromoInfo() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue),
+              const SizedBox(width: 8),
+              const Text('Informasi Promo'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInfoItem(Icons.check_circle,
+                  'Setiap promo hanya dapat diklaim sekali'),
+              _buildInfoItem(
+                  Icons.schedule, 'Promo memiliki masa berlaku tertentu'),
+              _buildInfoItem(Icons.person, 'Harus login untuk mengklaim promo'),
+              _buildInfoItem(Icons.refresh,
+                  'Tarik ke bawah untuk memperbarui daftar promo'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoItem(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmResetPromos() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.red),
+              const SizedBox(width: 8),
+              const Text('Konfirmasi Reset'),
+            ],
+          ),
+          content: const Text(
+            'Apakah Anda yakin ingin mereset semua promo yang sudah diklaim? '
+            'Tindakan ini tidak dapat dibatalkan dan hanya untuk keperluan testing.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                promoService.resetUserPromos();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Reset', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _getColorFromString(String colorName, dynamic colors) {
+    switch (colorName.toLowerCase()) {
+      case 'primary':
+        return colors.primary;
+      case 'secondary':
+        return colors.secondary;
+      case 'orange':
+        return Colors.orange;
+      case 'purple':
+        return Colors.purple;
+      default:
+        return colors.primary;
+    }
+  }
+
+  IconData _getIconFromString(String iconName) {
+    switch (iconName.toLowerCase()) {
+      case 'cut':
+        return Icons.cut;
+      case 'spa':
+        return Icons.spa;
+      case 'brush':
+        return Icons.brush;
+      case 'straighten':
+        return Icons.straighten;
+      default:
+        return Icons.local_offer;
+    }
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_application_1/database/auth_service.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
@@ -31,10 +32,10 @@ void main() async {
 
   // Inisialisasi SupabaseService
   Get.put(SupabaseService());
-
+  Get.put(PromoScreen());
   // Inisialisasi ThemeController
   Get.put(ThemeController());
-
+  Get.put(AuthService());
   runApp(const MyApp());
 }
 

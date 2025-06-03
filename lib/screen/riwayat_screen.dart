@@ -10,12 +10,35 @@ class RiwayatScreen extends StatefulWidget {
   State<RiwayatScreen> createState() => _RiwayatScreenState();
 }
 
-class _RiwayatScreenState extends State<RiwayatScreen> {
+class _RiwayatScreenState extends State<RiwayatScreen>
+    with WidgetsBindingObserver {
   List<Map<String, dynamic>> bookings = [];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadBookings();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Dipanggil ketika app kembali ke foreground atau ada perubahan lifecycle
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadBookings();
+    }
+  }
+
+  // Dipanggil setiap kali widget ini di-rebuild atau kembali dari screen lain
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _loadBookings();
   }
 
@@ -23,15 +46,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     final box = GetStorage();
     if (box.hasData('bookings')) {
       List<dynamic> savedBookings = box.read('bookings');
-      setState(() {
-        bookings = List<Map<String, dynamic>>.from(savedBookings);
-        // Urutkan booking berdasarkan timestamp (terbaru dulu)
-        bookings.sort((a, b) {
-          int timestampA = a['booking_timestamp'] ?? 0;
-          int timestampB = b['booking_timestamp'] ?? 0;
-          return timestampB.compareTo(timestampA);
+      if (mounted) {
+        setState(() {
+          bookings = List<Map<String, dynamic>>.from(savedBookings);
+          // Urutkan booking berdasarkan timestamp (terbaru dulu)
+          bookings.sort((a, b) {
+            int timestampA = a['booking_timestamp'] ?? 0;
+            int timestampB = b['booking_timestamp'] ?? 0;
+            return timestampB.compareTo(timestampA);
+          });
         });
-      });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          bookings = [];
+        });
+      }
     }
   }
 
@@ -183,6 +214,14 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
             ),
           ),
+          actions: [
+            // Tombol refresh manual jika diperlukan
+            IconButton(
+              onPressed: _loadBookings,
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh Data',
+            ),
+          ],
         ),
         body: Container(
           decoration: BoxDecoration(
@@ -195,13 +234,25 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${bookings.length} Booking Ditemukan',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${bookings.length} Booking Ditemukan',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            'Terakhir diperbarui: ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       Expanded(
@@ -211,6 +262,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           },
                           color: colors.primary,
                           child: ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             itemCount: bookings.length,
                             itemBuilder: (context, index) {
                               final booking = bookings[index];
@@ -228,34 +280,59 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   Widget _buildEmptyState(ThemeColors colors) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.history,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Belum ada riwayat booking',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
+    return RefreshIndicator(
+      onRefresh: () async {
+        _loadBookings();
+      },
+      color: colors.primary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.history,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Belum ada riwayat booking',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Mulai booking layanan untuk melihat riwayat',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _loadBookings,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Refresh'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Mulai booking layanan untuk melihat riwayat',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }

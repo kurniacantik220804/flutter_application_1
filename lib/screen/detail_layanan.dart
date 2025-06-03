@@ -3,6 +3,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DetailLayanan extends StatefulWidget {
   final String title;
@@ -25,13 +26,10 @@ class DetailLayanan extends StatefulWidget {
 class _DetailLayananState extends State<DetailLayanan> {
   final ThemeController _themeController = Get.find<ThemeController>();
 
-  // Method untuk mendapatkan path gambar berdasarkan judul layanan
   String _getServiceImage() {
     String serviceName = widget.title.toLowerCase();
 
-    if (serviceName.contains('tata rias') ||
-        serviceName.contains('makeup') ||
-        serviceName.contains('rias')) {
+    if (serviceName.contains('tata rias') || serviceName.contains('makeup')) {
       return 'assets/makeup.jpg';
     } else if (serviceName.contains('potong') &&
         serviceName.contains('rambut')) {
@@ -48,9 +46,19 @@ class _DetailLayananState extends State<DetailLayanan> {
     } else if (serviceName.contains('rambut')) {
       return 'assets/rambut.jpg';
     }
-
-    // Default fallback - return null jika tidak ada yang cocok
     return '';
+  }
+
+  Widget _buildIconFallback(dynamic colors) {
+    return AnimatedThemedContainer(
+      padding: const EdgeInsets.all(20),
+      withGradient: true,
+      child: Icon(
+        widget.icon,
+        size: 80,
+        color: Colors.white,
+      ),
+    );
   }
 
   @override
@@ -61,15 +69,13 @@ class _DetailLayananState extends State<DetailLayanan> {
         String imagePath = _getServiceImage();
 
         return ThemedScaffold(
-          appBar: ThemedAppBar(
-            title: widget.title,
-          ),
+          appBar: ThemedAppBar(title: widget.title),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image Section with fallback to icon
+                // Image Section
                 Center(
                   child: Container(
                     height: 200,
@@ -91,7 +97,6 @@ class _DetailLayananState extends State<DetailLayanan> {
                               imagePath,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                // Fallback ke icon jika gambar tidak ditemukan
                                 return _buildIconFallback(colors);
                               },
                             )
@@ -101,7 +106,7 @@ class _DetailLayananState extends State<DetailLayanan> {
                 ),
                 const SizedBox(height: 24),
 
-                // Title Section
+                // Title and Description Section - Combined
                 ThemedCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,39 +118,11 @@ class _DetailLayananState extends State<DetailLayanan> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      ThemedText(
-                        text: 'Harga: ${widget.harga}',
-                        isPrimary: true,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Description Section
-                ThemedCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const ThemedText(
-                        text: 'Deskripsi Layanan:',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         widget.deskripsi.isNotEmpty
                             ? widget.deskripsi
-                            : 'Layanan ${widget.title} kami menawarkan pengalaman terbaik dengan '
-                                'staff profesional dan produk berkualitas tinggi. '
-                                'Kami menjamin kepuasan Anda dengan hasil yang maksimal.',
+                            : 'Layanan ${widget.title} kami menawarkan pengalaman terbaik dengan staff profesional dan produk berkualitas tinggi.',
                         style: const TextStyle(fontSize: 16, height: 1.5),
                       ),
                     ],
@@ -159,7 +136,7 @@ class _DetailLayananState extends State<DetailLayanan> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const ThemedText(
-                        text: 'Pilih Tanggal & Waktu:',
+                        text: 'Booking Layanan:',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -179,18 +156,6 @@ class _DetailLayananState extends State<DetailLayanan> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildIconFallback(dynamic colors) {
-    return AnimatedThemedContainer(
-      padding: const EdgeInsets.all(20),
-      withGradient: true,
-      child: Icon(
-        widget.icon,
-        size: 80,
-        color: Colors.white,
-      ),
     );
   }
 }
@@ -215,9 +180,9 @@ class _BookingFormState extends State<BookingForm> {
   final _formKey = GlobalKey<FormState>();
   DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
-  String selectedPayment = 'Cash';
   String? selectedPromo;
   bool isLoading = false;
+  bool isLoadingPromos = false;
   final ThemeController _themeController = Get.find<ThemeController>();
 
   List<Map<String, dynamic>> availablePromos = [];
@@ -232,69 +197,86 @@ class _BookingFormState extends State<BookingForm> {
     _calculatePrice();
   }
 
-  void _loadAvailablePromos() {
-    List<Map<String, dynamic>> promos = [];
+  Future<void> _loadAvailablePromos() async {
+    setState(() => isLoadingPromos = true);
+
+    try {
+      String serviceKey = _getServiceKey();
+      final response = await Supabase.instance.client
+          .from('promo')
+          .select()
+          .eq('id_produk', serviceKey)
+          .eq('status', 'aktif')
+          .gte('tanggal_berakhir',
+              DateTime.now().toIso8601String().split('T')[0]);
+
+      List<Map<String, dynamic>> promos = [];
+      for (var promo in response) {
+        bool alreadyClaimed = await _isPromoAlreadyClaimed(promo['nama_promo']);
+        if (!alreadyClaimed) {
+          promos.add({
+            'id': promo['id'],
+            'name': promo['nama_promo'],
+            'description': promo['deskripsi'],
+            'discount_percent': promo['diskon_persen'],
+            'type':
+                promo['diskon_persen'] == 100 ? 'free_service' : 'percentage',
+            'value': promo['diskon_persen'] == 100
+                ? promo['harga_asli']
+                : promo['diskon_persen'],
+          });
+        }
+      }
+
+      setState(() {
+        availablePromos = promos;
+        isLoadingPromos = false;
+      });
+    } catch (e) {
+      setState(() {
+        availablePromos = [];
+        isLoadingPromos = false;
+      });
+    }
+  }
+
+  String _getServiceKey() {
     String serviceName = widget.title.toLowerCase();
-
-    // Promo khusus untuk layanan potong rambut
-    if (serviceName.contains('potong') || serviceName.contains('rambut')) {
-      // Cek apakah ini layanan perawatan rambut untuk promo free catok
-      if (serviceName.contains('perawatan') ||
-          serviceName.contains('creambath') ||
-          serviceName.contains('vitamin') ||
-          serviceName.contains('masker')) {
-        promos.add({
-          'name': 'Free Layanan Catok Rambut',
-          'type': 'free_service',
-          'value': 20000, // nilai layanan catok yang gratis
-          'applicable': true,
-        });
-      }
-      // Untuk layanan potong rambut biasa
-      else if (serviceName.contains('potong')) {
-        promos.add({
-          'name': 'Diskon 30% Potong Rambut',
-          'type': 'percentage',
-          'value': 30,
-          'applicable': true,
-        });
-      }
+    if (serviceName.contains('potong') && serviceName.contains('rambut')) {
+      return 'Potong Rambut';
+    } else if (serviceName.contains('perawatan') &&
+        serviceName.contains('rambut')) {
+      return 'Perawatan_Rambut';
+    } else if (serviceName.contains('wajah') ||
+        serviceName.contains('facial')) {
+      return 'Perawatan Wajah';
+    } else if (serviceName.contains('makeup') ||
+        serviceName.contains('tata rias')) {
+      return 'Tata_Rias';
     }
+    return widget.title;
+  }
 
-    // Promo khusus untuk layanan perawatan wajah/facial
-    if (serviceName.contains('facial') ||
-        serviceName.contains('wajah') ||
-        serviceName.contains('perawatan wajah')) {
-      promos.add({
-        'name': 'Diskon 15% Perawatan Wajah',
-        'type': 'percentage',
-        'value': 15,
-        'applicable': true,
-      });
+  Future<bool> _isPromoAlreadyClaimed(String promoTitle) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return false;
+
+      final response = await Supabase.instance.client
+          .from('claimed_promos')
+          .select()
+          .eq('user_id', user.id)
+          .eq('promo_title', promoTitle);
+
+      return response.isNotEmpty;
+    } catch (e) {
+      return false;
     }
-
-    // Promo khusus untuk layanan tata rias/makeup
-    if (serviceName.contains('makeup') ||
-        serviceName.contains('tata rias') ||
-        serviceName.contains('rias')) {
-      promos.add({
-        'name': 'Paket Hemat Makeup',
-        'type': 'fixed_discount',
-        'value': 15000, // Diskon Rp 15.000
-        'applicable': true,
-      });
-    }
-
-    setState(() {
-      availablePromos = promos;
-    });
   }
 
   void _calculatePrice() {
-    // Extract numeric value from price string (assuming format like "Rp 25.000")
     String priceStr = widget.price.replaceAll(RegExp(r'[^\d]'), '');
     originalPrice = double.tryParse(priceStr) ?? 0;
-
     finalPrice = originalPrice;
     discountAmount = 0;
 
@@ -305,26 +287,15 @@ class _BookingFormState extends State<BookingForm> {
       );
 
       if (promo.isNotEmpty) {
-        switch (promo['type']) {
-          case 'percentage':
-            discountAmount = originalPrice * (promo['value'] / 100);
-            finalPrice = originalPrice - discountAmount;
-            break;
-          case 'fixed_discount':
-            discountAmount = promo['value'].toDouble();
-            finalPrice = originalPrice - discountAmount;
-            if (finalPrice < 0) finalPrice = 0;
-            break;
-          case 'free_service':
-            // Untuk free service, kita berikan nilai diskon sebagai benefit tambahan
-            discountAmount = promo['value'].toDouble();
-            finalPrice =
-                originalPrice; // Harga tetap sama, tapi dapat bonus layanan gratis
-            break;
+        if (promo['type'] == 'percentage') {
+          discountAmount = originalPrice * (promo['value'] / 100);
+          finalPrice = originalPrice - discountAmount;
+        } else if (promo['type'] == 'free_service') {
+          discountAmount = promo['value'].toDouble();
+          finalPrice = originalPrice;
         }
       }
     }
-
     setState(() {});
   }
 
@@ -334,7 +305,6 @@ class _BookingFormState extends State<BookingForm> {
 
   Future<void> _selectDate(BuildContext context) async {
     final colors = _themeController.getThemeColors();
-
     final picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
@@ -355,15 +325,12 @@ class _BookingFormState extends State<BookingForm> {
     );
 
     if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-      });
+      setState(() => selectedDate = picked);
     }
   }
 
   Future<void> _selectTime(BuildContext context) async {
     final colors = _themeController.getThemeColors();
-
     final picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
@@ -382,93 +349,77 @@ class _BookingFormState extends State<BookingForm> {
     );
 
     if (picked != null && picked != selectedTime) {
-      setState(() {
-        selectedTime = picked;
-      });
+      setState(() => selectedTime = picked);
     }
   }
 
-  void _submitBooking() {
+  Future<void> _submitBooking() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        isLoading = true;
-      });
+      setState(() => isLoading = true);
 
-      // Create booking object with complete data - FIXED: ensure price is not null
-      final booking = {
-        'title': widget.title ?? '',
-        'original_price': _formatPrice(originalPrice),
-        'final_price': _formatPrice(finalPrice),
-        'price': _formatPrice(
-            finalPrice), // FIXED: Added this field to prevent null error
-        'discount_amount':
-            discountAmount > 0 ? _formatPrice(discountAmount) : null,
-        'promo_used': selectedPromo,
-        'promo_type': selectedPromo != null
-            ? availablePromos.firstWhere(
-                (p) => p['name'] == selectedPromo,
-                orElse: () => {},
-              )['type']
-            : null,
-        'date':
-            '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-        'formatted_date':
-            '${selectedDate.day.toString().padLeft(2, '0')} ${_getMonthName(selectedDate.month)} ${selectedDate.year}',
-        'time':
-            '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-        'payment': selectedPayment,
-        'icon': widget.icon,
-        'booking_timestamp': DateTime.now().millisecondsSinceEpoch,
-      };
+      try {
+        if (selectedPromo != null) {
+          await _claimPromo(selectedPromo!);
+        }
 
-      // Save booking to GetStorage
-      final box = GetStorage();
-      List<dynamic> bookings = [];
-      if (box.hasData('bookings')) {
-        bookings = box.read('bookings');
-      }
-      bookings.add(booking);
-      box.write('bookings', bookings);
+        final booking = {
+          'title': widget.title,
+          'price': _formatPrice(finalPrice),
+          'discount_amount':
+              discountAmount > 0 ? _formatPrice(discountAmount) : null,
+          'promo_used': selectedPromo,
+          'date':
+              '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+          'time':
+              '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+          'payment': 'Cash',
+          'icon': widget.icon,
+          'booking_timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
 
-      // Simulate network delay for better UX
-      Future.delayed(const Duration(seconds: 1), () {
-        setState(() {
-          isLoading = false;
-        });
+        final box = GetStorage();
+        List<dynamic> bookings = box.read('bookings') ?? [];
+        bookings.add(booking);
+        box.write('bookings', bookings);
 
-        // Show success message
+        await Future.delayed(const Duration(seconds: 1));
+        setState(() => isLoading = false);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(selectedPromo != null
-                ? 'Booking berhasil dengan promo ${selectedPromo}!'
+                ? 'Booking berhasil dengan promo $selectedPromo!'
                 : 'Booking berhasil ditambahkan!'),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Navigate back to the previous screen
+        Get.forceAppUpdate();
         Navigator.pop(context);
-      });
+      } catch (e) {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  String _getMonthName(int month) {
-    const months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des'
-    ];
-    return months[month];
+  Future<void> _claimPromo(String promoTitle) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      await Supabase.instance.client.from('claimed_promos').insert({
+        'user_id': user.id,
+        'promo_title': promoTitle,
+      });
+    } catch (e) {
+      print('Error claiming promo: $e');
+    }
   }
 
   @override
@@ -482,79 +433,64 @@ class _BookingFormState extends State<BookingForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Date picker
-              InkWell(
-                onTap: () => _selectDate(context),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colors.primary.withOpacity(0.3)),
-                    borderRadius: BorderRadius.circular(12),
-                    color: colors.primary.withOpacity(0.05),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today,
-                              color: colors.primary, size: 20),
-                          const SizedBox(width: 12),
-                          Text(
-                            '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ],
+              // Date and Time Selection
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _selectDate(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                              color: colors.primary.withOpacity(0.3)),
+                          borderRadius: BorderRadius.circular(12),
+                          color: colors.primary.withOpacity(0.05),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today,
+                                color: colors.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                                '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                          ],
+                        ),
                       ),
-                      Icon(Icons.arrow_forward_ios,
-                          color: colors.primary, size: 16),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _selectTime(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                              color: colors.primary.withOpacity(0.3)),
+                          borderRadius: BorderRadius.circular(12),
+                          color: colors.primary.withOpacity(0.05),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.access_time,
+                                color: colors.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                                '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
-              // Time picker
-              InkWell(
-                onTap: () => _selectTime(context),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colors.primary.withOpacity(0.3)),
-                    borderRadius: BorderRadius.circular(12),
-                    color: colors.primary.withOpacity(0.05),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.access_time,
-                              color: colors.primary, size: 20),
-                          const SizedBox(width: 12),
-                          Text(
-                            '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ],
-                      ),
-                      Icon(Icons.arrow_forward_ios,
-                          color: colors.primary, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Promo section - only show if promos are available
-              if (availablePromos.isNotEmpty) ...[
-                const ThemedText(
-                  text: 'Gunakan Promo:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
+              // Promo Selection
+              if (isLoadingPromos)
+                const Center(child: CircularProgressIndicator())
+              else if (availablePromos.isNotEmpty) ...[
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -568,7 +504,6 @@ class _BookingFormState extends State<BookingForm> {
                       value: selectedPromo,
                       isExpanded: true,
                       hint: const Text('Pilih Promo (Opsional)'),
-                      icon: Icon(Icons.arrow_drop_down, color: colors.primary),
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
@@ -577,21 +512,12 @@ class _BookingFormState extends State<BookingForm> {
                         ...availablePromos.map((promo) {
                           return DropdownMenuItem<String?>(
                             value: promo['name'],
-                            child: Row(
-                              children: [
-                                Icon(Icons.local_offer,
-                                    color: colors.secondary, size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(child: Text(promo['name'])),
-                              ],
-                            ),
+                            child: Text(promo['name']),
                           );
                         }).toList(),
                       ],
                       onChanged: (newValue) {
-                        setState(() {
-                          selectedPromo = newValue;
-                        });
+                        setState(() => selectedPromo = newValue);
                         _calculatePrice();
                       },
                     ),
@@ -600,192 +526,97 @@ class _BookingFormState extends State<BookingForm> {
                 const SizedBox(height: 16),
               ],
 
-              // Price calculation display
+              // Price Summary
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: colors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.primary.withOpacity(0.2)),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Rincian Harga:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Harga Layanan:'),
-                        Text(_formatPrice(originalPrice)),
+                        const Text('Harga:', style: TextStyle(fontSize: 16)),
+                        Text(_formatPrice(originalPrice),
+                            style: const TextStyle(fontSize: 16)),
                       ],
                     ),
-                    if (selectedPromo != null && discountAmount > 0) ...[
+                    if (discountAmount > 0) ...[
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_getDiscountLabel()),
-                          Text(
-                            _getDiscountText(),
-                            style: TextStyle(color: colors.secondary),
-                          ),
+                          const Text('Diskon:',
+                              style: TextStyle(color: Colors.green)),
+                          Text('- ${_formatPrice(discountAmount)}',
+                              style: const TextStyle(color: Colors.green)),
                         ],
                       ),
-                      const Divider(),
                     ],
+                    const Divider(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Total Bayar:',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          _formatPrice(finalPrice),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: colors.primary,
-                          ),
-                        ),
+                        const Text('Total:',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(_formatPrice(finalPrice),
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: colors.primary)),
                       ],
                     ),
-                    // Show bonus info for free service promo
-                    if (selectedPromo != null && _isFreeSevicePromo()) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border:
-                              Border.all(color: Colors.green.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.card_giftcard,
-                                color: Colors.green, size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Bonus: Layanan Catok Rambut Gratis (${_formatPrice(discountAmount)})',
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // Payment method - simplified to only Cash
-              const ThemedText(
-                text: 'Metode Pembayaran:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: colors.primary.withOpacity(0.3)),
-                  borderRadius: BorderRadius.circular(12),
-                  color: colors.primary.withOpacity(0.05),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.payment, color: colors.primary, size: 20),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Cash (Bayar di Tempat)',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Submit button
+              // Submit Button
               SizedBox(
                 width: double.infinity,
                 child: ThemedButton(
-                  text: 'Booking Sekarang',
+                  text: isLoading ? 'Memproses...' : 'Booking Sekarang',
                   height: 50,
                   onPressed: isLoading ? null : _submitBooking,
                 ),
               ),
-
-              // Loading indicator when booking
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 16),
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
             ],
           ),
         );
       },
     );
   }
+}
 
-  String _getDiscountLabel() {
-    if (selectedPromo == null) return '';
+class BookingController extends GetxController {
+  static BookingController get to => Get.find();
+  final RxList<Map<String, dynamic>> _bookings = <Map<String, dynamic>>[].obs;
+  List<Map<String, dynamic>> get bookings => _bookings.toList();
 
-    Map<String, dynamic>? promo = availablePromos.firstWhere(
-      (p) => p['name'] == selectedPromo,
-      orElse: () => {},
-    );
+  @override
+  void onInit() {
+    super.onInit();
+    loadBookings();
+  }
 
-    if (promo.isEmpty) return '';
-
-    switch (promo['type']) {
-      case 'free_service':
-        return 'Bonus Layanan:';
-      default:
-        return 'Diskon ($selectedPromo):';
+  void loadBookings() {
+    final box = GetStorage();
+    if (box.hasData('bookings')) {
+      List<dynamic> savedBookings = box.read('bookings');
+      _bookings.value = List<Map<String, dynamic>>.from(savedBookings);
+      _bookings.sort((a, b) {
+        int timestampA = a['booking_timestamp'] ?? 0;
+        int timestampB = b['booking_timestamp'] ?? 0;
+        return timestampB.compareTo(timestampA);
+      });
     }
   }
 
-  String _getDiscountText() {
-    if (selectedPromo == null) return '';
-
-    Map<String, dynamic>? promo = availablePromos.firstWhere(
-      (p) => p['name'] == selectedPromo,
-      orElse: () => {},
-    );
-
-    if (promo.isEmpty) return '';
-
-    switch (promo['type']) {
-      case 'free_service':
-        return 'Catok Gratis (${_formatPrice(discountAmount)})';
-      default:
-        return '- ${_formatPrice(discountAmount)}';
-    }
-  }
-
-  bool _isFreeSevicePromo() {
-    if (selectedPromo == null) return false;
-
-    Map<String, dynamic>? promo = availablePromos.firstWhere(
-      (p) => p['name'] == selectedPromo,
-      orElse: () => {},
-    );
-
-    return promo.isNotEmpty && promo['type'] == 'free_service';
+  void refreshBookings() {
+    loadBookings();
+    update();
   }
 }

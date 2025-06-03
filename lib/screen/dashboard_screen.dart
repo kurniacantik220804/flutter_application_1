@@ -143,14 +143,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {
-            // Handle notification action
-          },
-        ),
-      ],
     );
   }
 

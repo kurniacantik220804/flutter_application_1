@@ -26,13 +26,26 @@ class _SettingsScreenState extends State<SettingsScreen>
   String roleDisplayName = 'Loading...';
   bool isLoading = true;
 
-  // Get AuthService instance
-  final AuthService authService = Get.find<AuthService>();
+  // Initialize AuthService if not exists
+  AuthService? _authService;
 
   @override
   void initState() {
     super.initState();
+    _initializeAuthService();
     _loadUserData();
+  }
+
+  void _initializeAuthService() {
+    try {
+      // Try to get existing AuthService
+      _authService = Get.find<AuthService>();
+    } catch (e) {
+      // If not found, create and register it
+      print('AuthService not found, creating new instance');
+      _authService = AuthService();
+      Get.put(_authService!);
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -60,8 +73,14 @@ class _SettingsScreenState extends State<SettingsScreen>
               'Pengguna';
         }
 
-        // Get user role from AuthService
-        userRole = authService.currentUserRole;
+        // Get user role from AuthService if available
+        if (_authService != null) {
+          userRole = _authService!.currentUserRole;
+        } else {
+          // Fallback to local storage
+          final box = GetStorage();
+          userRole = box.read('user_role') ?? 'guest';
+        }
         roleDisplayName = _getRoleDisplayName(userRole);
       } else {
         // Fallback to local storage if no user session
@@ -236,8 +255,19 @@ class _SettingsScreenState extends State<SettingsScreen>
           ElevatedButton(
             onPressed: () async {
               try {
-                // Logout using AuthService
-                await authService.logout();
+                // Use AuthService if available, otherwise handle logout manually
+                if (_authService != null) {
+                  await _authService!.logout();
+                } else {
+                  // Manual logout
+                  await SupabaseService.to.signOut();
+                  final box = GetStorage();
+                  box.remove('user_role');
+                  box.remove('user_id');
+                  box.remove('user_name');
+                  box.remove('user_email');
+                  box.remove('user_phone');
+                }
 
                 // Navigate to login screen
                 if (mounted) {

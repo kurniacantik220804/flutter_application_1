@@ -24,123 +24,125 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
           gradient: controller.getBackgroundGradient(),
         ),
         child: Obx(() => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Theme Selection Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // Theme Selection Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.palette,
-                          color: controller.getThemeColors().primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pilih Tema',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: controller.getThemeColors().primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Column(
-                      children: AppThemeType.values.map((theme) {
-                        final isSelected = controller.selectedTheme == theme;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildThemeOption(
-                            theme: theme,
-                            isSelected: isSelected,
-                            onTap: () {
-                              setState(() {
-                                controller.changeTheme(theme);
-                              });
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Preview Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.preview,
-                          color: controller.getThemeColors().primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pratinjau Tema',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: controller.getThemeColors().primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      height: 120,
-                      decoration: controller.getThemedDecoration(
-                        withGradient: true,
-                        borderRadius: 16,
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Row(
                           children: [
                             Icon(
-                              Icons.spa,
-                              size: 32,
+                              Icons.palette,
                               color: controller.getThemeColors().primary,
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(width: 8),
                             Text(
-                              'Salon Cantik',
+                              'Pilih Tema',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: controller.getThemeColors().primary,
                               ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Column(
+                          children: AppThemeType.values.map((theme) {
+                            final isSelected =
+                                controller.selectedTheme == theme;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _buildThemeOption(
+                                theme: theme,
+                                isSelected: isSelected,
+                                onTap: () {
+                                  setState(() {
+                                    controller.changeTheme(theme);
+                                  });
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Preview Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.preview,
+                              color: controller.getThemeColors().primary,
+                            ),
+                            const SizedBox(width: 8),
                             Text(
-                              controller.selectedTheme.name,
+                              'Pratinjau Tema',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: controller.getThemeColors().secondary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: controller.getThemeColors().primary,
                               ),
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        Container(
+                          height: 120,
+                          decoration: controller.getThemedDecoration(
+                            withGradient: true,
+                            borderRadius: 16,
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.spa,
+                                  size: 32,
+                                  color: controller.getThemeColors().primary,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Salon Cantik',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: controller.getThemeColors().primary,
+                                  ),
+                                ),
+                                Text(
+                                  controller.selectedTheme.name,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color:
+                                        controller.getThemeColors().secondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        )),
+              ],
+            )),
       ),
     );
   }
