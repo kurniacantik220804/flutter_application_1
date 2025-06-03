@@ -21,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
       String? username = box.read('username');
 
       if (username == null) {
-        Get.off(() => const Login2Screen());
+        Get.off(() => const login2screen());
       } else {
         Get.off(
           () => const MainScreen(),

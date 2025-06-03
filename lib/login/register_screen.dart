@@ -15,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool passwordVisible = false;
   bool confirmPasswordVisible = false;
   bool isLoading = false;
+  String selectedRole = 'user'; // Default role adalah user
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -76,7 +77,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // Sign up user dengan Supabase Auth tanpa email verification
+      print('Starting registration with role: $selectedRole'); // Debug log
+
+      // Step 1: Sign up user dengan Supabase Auth
       final AuthResponse authResponse =
           await Supabase.instance.client.auth.signUp(
         email: emailController.text.trim(),
@@ -84,56 +87,113 @@ class _RegisterScreenState extends State<RegisterScreen> {
         data: {
           'full_name': nameController.text.trim(),
           'phone_number': phoneController.text.trim(),
+          'role': selectedRole, // Metadata role
         },
-        emailRedirectTo: null, // Tidak perlu redirect URL untuk verifikasi
+        emailRedirectTo: null,
       );
 
       if (authResponse.user != null) {
-        // Insert profile data ke table profiles
+        print('Auth user created with ID: ${authResponse.user!.id}'); // Debug
+
+        // Step 2: Wait a moment for auth to settle
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Step 3: Insert profile data dengan EXPLICIT role
         try {
-          await Supabase.instance.client.from('profiles').insert({
+          final profileData = {
             'id': authResponse.user!.id,
             'username': nameController.text.trim(),
             'full_name': nameController.text.trim(),
             'phone_number': phoneController.text.trim(),
             'email': emailController.text.trim(),
+            'role': selectedRole, // PASTIKAN role disimpan
+            'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
+          };
+
+          print('Inserting profile with data: $profileData'); // Debug log
+
+          final insertResponse = await Supabase.instance.client
+              .from('profiles')
+              .insert(profileData)
+              .select()
+              .single();
+
+          print('Profile inserted successfully: $insertResponse'); // Debug
+
+          // Step 4: Verify the inserted role
+          final verifyResponse = await Supabase.instance.client
+              .from('profiles')
+              .select('role')
+              .eq('id', authResponse.user!.id)
+              .single();
+
+          print(
+              'Verified role in database: ${verifyResponse['role']}'); // Debug
+
+          // Success message
+          _showSnackBar(
+              'Pendaftaran berhasil sebagai ${selectedRole.toUpperCase()}! Role: ${verifyResponse['role'] ?? 'UNKNOWN'}',
+              Colors.green);
+
+          // Clear all fields
+          nameController.clear();
+          emailController.clear();
+          phoneController.clear();
+          passwordController.clear();
+          confirmPasswordController.clear();
+          setState(() {
+            selectedRole = 'user'; // Reset role ke default
           });
 
-          print('Profile inserted successfully');
+          // Wait for success message to show
+          await Future.delayed(const Duration(milliseconds: 2000));
+
+          if (mounted) {
+            Navigator.pop(context);
+          }
         } catch (profileError) {
           print('Error inserting profile: $profileError');
-          // Lanjutkan meskipun profile insert gagal
-        }
 
-        // Registrasi berhasil
-        _showSnackBar(
-            'Pendaftaran berhasil! Anda akan login otomatis.', Colors.green);
+          // Try to update instead of insert (in case profile already exists)
+          try {
+            print('Attempting to update existing profile...');
+            await Supabase.instance.client.from('profiles').update({
+              'username': nameController.text.trim(),
+              'full_name': nameController.text.trim(),
+              'phone_number': phoneController.text.trim(),
+              'email': emailController.text.trim(),
+              'role': selectedRole, // Update role
+              'updated_at': DateTime.now().toIso8601String(),
+            }).eq('id', authResponse.user!.id);
 
-        // Clear all fields
-        nameController.clear();
-        emailController.clear();
-        phoneController.clear();
-        passwordController.clear();
-        confirmPasswordController.clear();
+            print('Profile updated successfully with role: $selectedRole');
+            _showSnackBar('Pendaftaran berhasil (updated)!', Colors.green);
 
-        // Tunggu sebentar untuk menampilkan pesan sukses
-        await Future.delayed(const Duration(milliseconds: 1500));
+            // Clear and navigate
+            nameController.clear();
+            emailController.clear();
+            phoneController.clear();
+            passwordController.clear();
+            confirmPasswordController.clear();
 
-        if (mounted) {
-          // Jika ada session (email verification disabled),
-          // auth listener akan otomatis mengarahkan ke MainScreen
-          // Atau kita bisa langsung pop untuk kembali ke login dan biarkan auth handle
-          Navigator.pop(context);
+            await Future.delayed(const Duration(milliseconds: 1500));
+            if (mounted) Navigator.pop(context);
+          } catch (updateError) {
+            print('Error updating profile: $updateError');
+            _showSnackBar(
+                'Akun dibuat tapi profil gagal disimpan: $updateError',
+                Colors.orange);
+          }
         }
       } else {
         _showSnackBar(
             'Pendaftaran gagal: User tidak berhasil dibuat', Colors.red);
       }
     } on AuthException catch (e) {
+      print('Auth error: $e'); // Debug
       String errorMessage = 'Pendaftaran gagal: ';
 
-      // Handle specific error messages
       if (e.message.toLowerCase().contains('already registered') ||
           e.message.toLowerCase().contains('user already registered')) {
         errorMessage += 'Email sudah terdaftar';
@@ -149,7 +209,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       _showSnackBar(errorMessage, Colors.red);
     } on PostgrestException catch (e) {
-      // Handle database errors
+      print('Database error: $e'); // Debug
       String errorMessage = 'Gagal menyimpan data profil: ';
       if (e.message.contains('duplicate key')) {
         errorMessage += 'Username sudah digunakan';
@@ -158,8 +218,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
       _showSnackBar(errorMessage, Colors.red);
     } catch (e) {
+      print('General error: $e'); // Debug
       _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
-      print('Registration error: $e'); // For debugging
     } finally {
       if (mounted) {
         setState(() {
@@ -175,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SnackBar(
           content: Text(message),
           backgroundColor: color,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 4), // Longer duration to read
         ),
       );
     }
@@ -266,7 +326,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Info untuk user
+                      // Info untuk user dengan debug info
                       Container(
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
@@ -275,20 +335,194 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.green[200]!),
                         ),
-                        child: const Row(
+                        child: Column(
                           children: [
-                            Icon(Icons.info_outline,
-                                color: Colors.green, size: 16),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                "Email tidak perlu verifikasi, langsung bisa login setelah daftar",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.green,
-                                  fontSize: 12,
+                            const Row(
+                              children: [
+                                Icon(Icons.info_outline,
+                                    color: Colors.green, size: 16),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    "Email tidak perlu verifikasi, langsung bisa login setelah daftar",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.green,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Role yang dipilih: ${selectedRole.toUpperCase()}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: selectedRole == 'admin'
+                                    ? Colors.red[700]
+                                    : Colors.blue[700],
+                                fontSize: 12,
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Role Selection - Enhanced
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Pilih Tipe Akun",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: isLoading
+                                        ? null
+                                        : () {
+                                            setState(() {
+                                              selectedRole = 'user';
+                                            });
+                                            print(
+                                                'Selected role: user'); // Debug
+                                          },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: selectedRole == 'user'
+                                            ? Colors.blue[50]
+                                            : Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: selectedRole == 'user'
+                                              ? Colors.blue
+                                              : Colors.grey[300]!,
+                                          width: selectedRole == 'user' ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.person,
+                                            color: selectedRole == 'user'
+                                                ? Colors.blue
+                                                : Colors.grey[600],
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "User",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: selectedRole == 'user'
+                                                      ? Colors.blue
+                                                      : Colors.grey[700],
+                                                ),
+                                              ),
+                                              Text(
+                                                "Pelanggan",
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: selectedRole == 'user'
+                                                      ? Colors.blue[700]
+                                                      : Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: isLoading
+                                        ? null
+                                        : () {
+                                            setState(() {
+                                              selectedRole = 'admin';
+                                            });
+                                            print(
+                                                'Selected role: admin'); // Debug
+                                          },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: selectedRole == 'admin'
+                                            ? Colors.red[50]
+                                            : Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: selectedRole == 'admin'
+                                              ? Colors.red
+                                              : Colors.grey[300]!,
+                                          width:
+                                              selectedRole == 'admin' ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.admin_panel_settings,
+                                            color: selectedRole == 'admin'
+                                                ? Colors.red
+                                                : Colors.grey[600],
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Admin",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: selectedRole == 'admin'
+                                                      ? Colors.red
+                                                      : Colors.grey[700],
+                                                ),
+                                              ),
+                                              Text(
+                                                "Pengelola",
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: selectedRole == 'admin'
+                                                      ? Colors.red[700]
+                                                      : Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -436,7 +670,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: ElevatedButton(
                           onPressed: isLoading ? null : handleRegister,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.pink,
+                            backgroundColor: selectedRole == 'admin'
+                                ? Colors.red
+                                : Colors.pink,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -452,10 +688,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text(
-                                  "Daftar Sekarang",
-                                  style: TextStyle(
-                                    fontSize: 18,
+                              : Text(
+                                  "Daftar sebagai ${selectedRole.toUpperCase()}",
+                                  style: const TextStyle(
+                                    fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

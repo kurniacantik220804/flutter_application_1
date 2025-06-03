@@ -194,7 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const Login2Screen()),
+                        builder: (context) => const login2screen()),
                     (route) => false,
                   );
                 }
@@ -205,7 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const Login2Screen()),
+                        builder: (context) => const login2screen()),
                     (route) => false,
                   );
                 }

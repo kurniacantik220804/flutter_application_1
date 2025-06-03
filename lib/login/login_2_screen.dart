@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screen/main_screen.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_application_1/main.dart';
 import 'register_screen.dart';
-import 'package:flutter_application_1/database/service_supabase.dart';
+import 'package:flutter_application_1/database/auth_service.dart';
 
-class Login2Screen extends StatefulWidget {
-  const Login2Screen({super.key});
+class login2screen extends StatefulWidget {
+  const login2screen({super.key});
 
   @override
-  State<Login2Screen> createState() => _Login2ScreenState();
+  State<login2screen> createState() => _login2screenState();
 }
 
-class _Login2ScreenState extends State<Login2Screen> {
+class _login2screenState extends State<login2screen> {
   bool passwordVisible = false;
   bool isResetMode = false;
-  bool isLoading = false;
 
   // Controllers untuk input fields
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
+  // Get AuthService instance
+  final AuthService authService = Get.put(AuthService());
 
   void togglePasswordVisibility() {
     setState(() {
@@ -52,67 +52,72 @@ class _Login2ScreenState extends State<Login2Screen> {
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    // Use AuthService for login
+    final result = await authService.loginWithRole(
+      email: emailController.text.trim(),
+      password: passwordController.text,
+    );
 
-    try {
-      // Menggunakan SupabaseService untuk login
-      final AuthResponse response = await SupabaseService.to.signIn(
-        email: emailController.text.trim(),
-        password: passwordController.text,
-      );
+    // Show result message
+    _showSnackBar(
+      result.message,
+      result.success ? Colors.green : Colors.red,
+    );
 
-      if (response.user != null && response.session != null) {
-        // Login berhasil
-        _showSnackBar('Login berhasil!', Colors.green);
+    if (result.success) {
+      // Clear form
+      emailController.clear();
+      passwordController.clear();
 
-        // Clear form
-        emailController.clear();
-        passwordController.clear();
-
-        // Navigate to MainScreen (akan ditangani oleh auth listener di main.dart)
-        // Tapi kita bisa juga langsung navigate jika diperlukan
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        if (mounted) {
-          Get.offAll(() => const MainScreen());
-        }
-      } else {
-        _showSnackBar('Login gagal: Tidak ada session yang dibuat', Colors.red);
-      }
-    } on AuthException catch (e) {
-      String errorMessage = 'Login gagal: ';
-
-      // Handle specific error messages
-      switch (e.message.toLowerCase()) {
-        case 'invalid login credentials':
-          errorMessage += 'Email atau password salah';
-          break;
-        case 'email not confirmed':
-          errorMessage += 'Email belum diverifikasi. Silakan cek email Anda';
-          break;
-        case 'invalid email':
-          errorMessage += 'Format email tidak valid';
-          break;
-        case 'too many requests':
-          errorMessage += 'Terlalu banyak percobaan. Coba lagi nanti';
-          break;
-        default:
-          errorMessage += e.message;
+      // Show additional info for admin
+      if (result.userRole == 'admin') {
+        _showAdminWelcomeDialog();
       }
 
-      _showSnackBar(errorMessage, Colors.red);
-    } catch (e) {
-      _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
-      print('Login error: $e'); // For debugging
-    } finally {
+      // Navigate to MainScreen after delay
+      await Future.delayed(const Duration(milliseconds: 1000));
+
       if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+        Get.offAll(() => const MainScreen());
       }
     }
+  }
+
+  void _showAdminWelcomeDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.admin_panel_settings, color: Colors.red[600]),
+              const SizedBox(width: 8),
+              const Text('Akses Administrator'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Anda berhasil login sebagai Administrator.'),
+              SizedBox(height: 8),
+              Text('Akses yang tersedia:'),
+              SizedBox(height: 4),
+              Text('• Manajemen pengguna'),
+              Text('• Kontrol sistem'),
+              Text('• Laporan dan analitik'),
+              Text('• Pengaturan aplikasi'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Mengerti'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> handleResetPassword() async {
@@ -126,21 +131,19 @@ class _Login2ScreenState extends State<Login2Screen> {
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
-
     try {
-      // Menggunakan SupabaseService untuk reset password
-      await SupabaseService.to.resetPassword(emailController.text.trim());
+      final success =
+          await authService.resetPassword(emailController.text.trim());
 
-      _showSnackBar(
-          'Link reset password telah dikirim ke email Anda', Colors.green);
+      if (success) {
+        _showSnackBar(
+            'Link reset password telah dikirim ke email Anda', Colors.green);
 
-      setState(() {
-        isResetMode = false;
-        emailController.clear();
-      });
+        setState(() {
+          isResetMode = false;
+          emailController.clear();
+        });
+      }
     } on AuthException catch (e) {
       String errorMessage = 'Reset password gagal: ';
 
@@ -158,13 +161,7 @@ class _Login2ScreenState extends State<Login2Screen> {
       _showSnackBar(errorMessage, Colors.red);
     } catch (e) {
       _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
-      print('Reset password error: $e'); // For debugging
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      print('Reset password error: $e');
     }
   }
 
@@ -175,6 +172,10 @@ class _Login2ScreenState extends State<Login2Screen> {
           content: Text(message),
           backgroundColor: color,
           duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
     }
@@ -193,7 +194,7 @@ class _Login2ScreenState extends State<Login2Screen> {
         ),
         const SizedBox(height: 20),
 
-        // Info untuk user
+        // Enhanced info untuk user dengan role indicators
         Container(
           padding: const EdgeInsets.all(12),
           margin: const EdgeInsets.only(bottom: 16),
@@ -202,9 +203,9 @@ class _Login2ScreenState extends State<Login2Screen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.blue[200]!),
           ),
-          child: const Column(
+          child: Column(
             children: [
-              Text(
+              const Text(
                 "📝 Silakan daftar terlebih dahulu jika belum memiliki akun",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -212,6 +213,15 @@ class _Login2ScreenState extends State<Login2Screen> {
                   fontSize: 12,
                 ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              // Role indicators
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildRoleIndicator('👤 USER', Colors.blue),
+                  _buildRoleIndicator('🔑 ADMIN', Colors.red),
+                ],
               ),
             ],
           ),
@@ -221,7 +231,7 @@ class _Login2ScreenState extends State<Login2Screen> {
         TextField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          enabled: !isLoading,
+          enabled: !authService.isLoading,
           decoration: InputDecoration(
             labelText: "Masukkan Email",
             prefixIcon: const Icon(Icons.email_outlined, color: Colors.pink),
@@ -238,7 +248,7 @@ class _Login2ScreenState extends State<Login2Screen> {
         TextField(
           controller: passwordController,
           obscureText: !passwordVisible,
-          enabled: !isLoading,
+          enabled: !authService.isLoading,
           decoration: InputDecoration(
             labelText: "Masukkan Password",
             prefixIcon: const Icon(Icons.lock_outline, color: Colors.pink),
@@ -247,7 +257,8 @@ class _Login2ScreenState extends State<Login2Screen> {
                 passwordVisible ? Icons.visibility : Icons.visibility_off,
                 color: Colors.pink,
               ),
-              onPressed: isLoading ? null : togglePasswordVisibility,
+              onPressed:
+                  authService.isLoading ? null : togglePasswordVisibility,
             ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             focusedBorder: OutlineInputBorder(
@@ -262,42 +273,43 @@ class _Login2ScreenState extends State<Login2Screen> {
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
-            onPressed: isLoading ? null : showResetPasswordScreen,
+            onPressed: authService.isLoading ? null : showResetPasswordScreen,
             child: const Text("Lupa password?",
                 style: TextStyle(color: Colors.pink)),
           ),
         ),
         const SizedBox(height: 24),
 
-        // Login button
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: isLoading ? null : handleLogin,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pink,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Text(
-                    "Masuk",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        // Login button with loading state
+        Obx(() => SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: authService.isLoading ? null : handleLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-          ),
-        ),
+                  elevation: 2,
+                ),
+                child: authService.isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "Masuk",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+              ),
+            )),
         const SizedBox(height: 20),
 
         // Register option
@@ -306,7 +318,7 @@ class _Login2ScreenState extends State<Login2Screen> {
           children: [
             const Text("Belum punya akun? "),
             TextButton(
-              onPressed: isLoading
+              onPressed: authService.isLoading
                   ? null
                   : () {
                       Navigator.push(
@@ -327,6 +339,25 @@ class _Login2ScreenState extends State<Login2Screen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildRoleIndicator(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 10,
+        ),
+      ),
     );
   }
 
@@ -353,7 +384,7 @@ class _Login2ScreenState extends State<Login2Screen> {
         TextField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          enabled: !isLoading,
+          enabled: !authService.isLoading,
           decoration: InputDecoration(
             labelText: "Masukkan Email",
             prefixIcon: const Icon(Icons.email_outlined, color: Colors.pink),
@@ -367,39 +398,40 @@ class _Login2ScreenState extends State<Login2Screen> {
         const SizedBox(height: 24),
 
         // Send reset code button
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: isLoading ? null : handleResetPassword,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pink,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Text(
-                    "Kirim Link Reset",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Obx(() => SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: authService.isLoading ? null : handleResetPassword,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-          ),
-        ),
+                  elevation: 2,
+                ),
+                child: authService.isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "Kirim Link Reset",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+              ),
+            )),
         const SizedBox(height: 20),
 
         // Back to login
         TextButton(
-          onPressed: isLoading
+          onPressed: authService.isLoading
               ? null
               : () {
                   setState(() {
@@ -466,11 +498,38 @@ class _Login2ScreenState extends State<Login2Screen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // Subtitle
-                const Text(
-                  "2023",
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
+                // Subtitle dengan role status
+                Obx(() => Column(
+                      children: [
+                        const Text(
+                          "2023",
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                        if (!authService.isGuest) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: authService.isAdmin
+                                  ? Colors.red[100]
+                                  : Colors.blue[100],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Masuk sebagai ${authService.currentUserRole.toUpperCase()}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: authService.isAdmin
+                                    ? Colors.red[800]
+                                    : Colors.blue[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    )),
                 const SizedBox(height: 40),
                 // Main content card
                 Container(

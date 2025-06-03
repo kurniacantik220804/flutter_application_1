@@ -84,14 +84,14 @@ class _SplashScreenState extends State<SplashScreen> {
           if (session != null) {
             Get.offAll(() => const MainScreen());
           } else {
-            Get.offAll(() => const Login2Screen());
+            Get.offAll(() => const login2screen());
           }
           break;
         case AuthChangeEvent.signedIn:
           Get.offAll(() => const MainScreen());
           break;
         case AuthChangeEvent.signedOut:
-          Get.offAll(() => const Login2Screen());
+          Get.offAll(() => const login2screen());
           break;
         default:
           break;
@@ -105,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (currentSession != null) {
         Get.offAll(() => const MainScreen());
       } else {
-        Get.offAll(() => const Login2Screen());
+        Get.offAll(() => const login2screen());
       }
     });
   }
