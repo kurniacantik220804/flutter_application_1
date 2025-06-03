@@ -6,6 +6,7 @@ import 'detail_layanan.dart';
 import 'promo_screen.dart';
 import 'riwayat_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/theme/theme_widgets.dart';
 import 'package:flutter_application_1/database/service_supabase.dart';
 
 class DashboardScreen extends StatefulWidget {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_application_1/database/service_supabase.dart';
+import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/theme/theme_widgets.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -29,7 +31,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // User info untuk display
   String _userEmail = '';
   String _userName = '';
-  String _userPhone = '';
 
   @override
   void initState() {
@@ -50,7 +51,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         if (profile != null) {
           setState(() {
             _userName = profile['username'] ?? '';
-            _userPhone = profile['phone_number'] ?? '';
           });
         }
       }
@@ -158,79 +158,61 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Edit Profil',
-          style: TextStyle(color: Colors.white),
+    return Obx(() {
+      final themeController = ThemeController.to;
+      final colors = themeController.getThemeColors();
+
+      return ThemedScaffold(
+        appBar: ThemedAppBar(
+          title: 'Edit Profil',
         ),
-        backgroundColor: Colors.pinkAccent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 2,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // User Info Card (Read-only)
-            Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User Info Card (Read-only)
+              ThemedCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Informasi Akun',
-                      style: TextStyle(
+                    ThemedText(
+                      text: 'Informasi Akun',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.pinkAccent,
                       ),
+                      isPrimary: true,
                     ),
                     const SizedBox(height: 12),
-                    _buildInfoRow('Email', _userEmail, Icons.email),
+                    _buildInfoRow('Email', _userEmail, Icons.email, colors),
                     const SizedBox(height: 8),
                     _buildInfoRow(
-                        'Nama',
-                        _userName.isEmpty ? 'Belum diatur' : _userName,
-                        Icons.person),
-                    const SizedBox(height: 8),
-                    _buildInfoRow(
-                        'Telepon',
-                        _userPhone.isEmpty ? 'Belum diatur' : _userPhone,
-                        Icons.phone),
+                      'Nama',
+                      _userName.isEmpty ? 'Belum diatur' : _userName,
+                      Icons.person,
+                      colors,
+                    ),
                   ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Password Change Form
-            Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+              // Password Change Form
+              ThemedCard(
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Ubah Kata Sandi',
-                        style: TextStyle(
+                      ThemedText(
+                        text: 'Ubah Kata Sandi',
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.pinkAccent,
                         ),
+                        isPrimary: true,
                       ),
                       const SizedBox(height: 16),
 
@@ -243,14 +225,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          prefixIcon:
-                              const Icon(Icons.lock, color: Colors.pinkAccent),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: colors.primary),
+                          ),
+                          prefixIcon: Icon(Icons.lock, color: colors.primary),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isObscureCurrentPassword
                                   ? Icons.visibility
                                   : Icons.visibility_off,
-                              color: Colors.pinkAccent,
+                              color: colors.primary,
                             ),
                             onPressed: _isLoading
                                 ? null
@@ -281,14 +266,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          prefixIcon: const Icon(Icons.lock_outline,
-                              color: Colors.pinkAccent),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: colors.primary),
+                          ),
+                          prefixIcon:
+                              Icon(Icons.lock_outline, color: colors.primary),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isObscureNewPassword
                                   ? Icons.visibility
                                   : Icons.visibility_off,
-                              color: Colors.pinkAccent,
+                              color: colors.primary,
                             ),
                             onPressed: _isLoading
                                 ? null
@@ -322,14 +311,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          prefixIcon: const Icon(Icons.lock_outline,
-                              color: Colors.pinkAccent),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: colors.primary),
+                          ),
+                          prefixIcon:
+                              Icon(Icons.lock_outline, color: colors.primary),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isObscureConfirmNewPassword
                                   ? Icons.visibility
                                   : Icons.visibility_off,
-                              color: Colors.pinkAccent,
+                              color: colors.primary,
                             ),
                             onPressed: _isLoading
                                 ? null
@@ -361,7 +354,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _changePassword,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.pinkAccent,
+                            backgroundColor: colors.primary,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -390,44 +383,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Info Card
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Pastikan kata sandi baru Anda aman dan mudah diingat. Minimal 6 karakter.',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
+  Widget _buildInfoRow(
+      String label, String value, IconData icon, ThemeColors colors) {
     return Row(
       children: [
-        Icon(icon, color: Colors.pinkAccent, size: 20),
+        Icon(icon, color: colors.primary, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

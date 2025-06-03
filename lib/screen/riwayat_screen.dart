@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 
 class RiwayatScreen extends StatefulWidget {
@@ -13,13 +12,6 @@ class RiwayatScreen extends StatefulWidget {
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
   List<Map<String, dynamic>> bookings = [];
-  String selectedFilter = 'Semua';
-  final List<String> filterOptions = [
-    'Semua',
-    'Terjadwal',
-    'Selesai',
-    'Dibatalkan'
-  ];
 
   @override
   void initState() {
@@ -33,15 +25,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       List<dynamic> savedBookings = box.read('bookings');
       setState(() {
         bookings = List<Map<String, dynamic>>.from(savedBookings);
-        // Urutkan booking berdasarkan tanggal (terbaru dulu)
+        // Urutkan booking berdasarkan timestamp (terbaru dulu)
         bookings.sort((a, b) {
-          try {
-            DateTime dateA = DateFormat('dd MMM yyyy').parse(a['date']);
-            DateTime dateB = DateFormat('dd MMM yyyy').parse(b['date']);
-            return dateB.compareTo(dateA);
-          } catch (e) {
-            return 0;
-          }
+          int timestampA = a['booking_timestamp'] ?? 0;
+          int timestampB = b['booking_timestamp'] ?? 0;
+          return timestampB.compareTo(timestampA);
         });
       });
     }
@@ -103,87 +91,77 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  void _updateBookingStatus(int index, String newStatus) {
-    setState(() {
-      bookings[index]['status'] = newStatus;
-    });
-
-    // Update storage
-    final box = GetStorage();
-    box.write('bookings', bookings);
-
-    // Menggunakan reaktif tema untuk snackbar
-    final themeController = ThemeController.to;
-    final colors = themeController.getThemeColors();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Status booking diubah ke $newStatus'),
-        backgroundColor: colors.primary,
-      ),
-    );
-  }
-
-  List<Map<String, dynamic>> get filteredBookings {
-    if (selectedFilter == 'Semua') {
-      return bookings;
-    }
-    return bookings
-        .where((booking) => booking['status'] == selectedFilter)
-        .toList();
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Terjadwal':
-        return Colors.blue;
-      case 'Selesai':
-        return Colors.green;
-      case 'Dibatalkan':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'Terjadwal':
-        return Icons.schedule;
-      case 'Selesai':
-        return Icons.check_circle;
-      case 'Dibatalkan':
-        return Icons.cancel;
-      default:
-        return Icons.help;
-    }
-  }
-
   bool _isUpcoming(String dateStr, String timeStr) {
     try {
-      DateTime bookingDate = DateFormat('dd MMM yyyy').parse(dateStr);
+      // Parse tanggal dalam format dd/mm/yyyy
+      List<String> dateParts = dateStr.split('/');
+      if (dateParts.length != 3) return false;
+
+      int day = int.parse(dateParts[0]);
+      int month = int.parse(dateParts[1]);
+      int year = int.parse(dateParts[2]);
+
+      // Parse waktu
       List<String> timeParts = timeStr.split(':');
+      if (timeParts.length != 2) return false;
+
       int hour = int.parse(timeParts[0]);
       int minute = int.parse(timeParts[1]);
 
-      DateTime bookingDateTime = DateTime(
-        bookingDate.year,
-        bookingDate.month,
-        bookingDate.day,
-        hour,
-        minute,
-      );
-
+      DateTime bookingDateTime = DateTime(year, month, day, hour, minute);
       return bookingDateTime.isAfter(DateTime.now());
     } catch (e) {
       return false;
     }
   }
 
+  String _formatDateTime(String dateStr, String timeStr) {
+    try {
+      List<String> dateParts = dateStr.split('/');
+      if (dateParts.length == 3) {
+        int day = int.parse(dateParts[0]);
+        int month = int.parse(dateParts[1]);
+        int year = int.parse(dateParts[2]);
+
+        List<String> monthNames = [
+          '',
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'Mei',
+          'Jun',
+          'Jul',
+          'Agu',
+          'Sep',
+          'Okt',
+          'Nov',
+          'Des'
+        ];
+
+        return '$day ${monthNames[month]} $year - $timeStr';
+      }
+    } catch (e) {
+      // Jika gagal parse, return format asli
+    }
+    return '$dateStr - $timeStr';
+  }
+
+  String _getPrice(Map<String, dynamic> booking) {
+    // Coba ambil final_price dulu, kalau tidak ada ambil price
+    if (booking['final_price'] != null &&
+        booking['final_price'].toString().isNotEmpty) {
+      return booking['final_price'].toString();
+    } else if (booking['price'] != null &&
+        booking['price'].toString().isNotEmpty) {
+      return booking['price'].toString();
+    } else {
+      return 'Rp 0';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filteredList = filteredBookings;
-
     // Menggunakan Obx untuk reaktivitas tema otomatis
     return Obx(() {
       final themeController = ThemeController.to;
@@ -210,109 +188,39 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           decoration: BoxDecoration(
             gradient: themeController.getBackgroundGradient(),
           ),
-          child: Column(
-            children: [
-              // Filter Section
-              Container(
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.primary.withOpacity(0.1),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Filter Status:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: filterOptions.map((filter) {
-                          final isSelected = selectedFilter == filter;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: FilterChip(
-                              label: Text(filter),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  selectedFilter = filter;
-                                });
-                              },
-                              selectedColor: colors.primary.withOpacity(0.3),
-                              backgroundColor: Colors.grey[100],
-                              checkmarkColor: colors.primary,
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? colors.primary
-                                    : Colors.black87,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Booking List
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: filteredList.isEmpty
-                      ? _buildEmptyState(colors)
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${filteredList.length} Booking Ditemukan',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Expanded(
-                              child: RefreshIndicator(
-                                onRefresh: () async {
-                                  _loadBookings();
-                                },
-                                color: colors.primary,
-                                child: ListView.builder(
-                                  itemCount: filteredList.length,
-                                  itemBuilder: (context, index) {
-                                    final booking = filteredList[index];
-                                    final originalIndex =
-                                        bookings.indexOf(booking);
-                                    return _buildHistoryCard(
-                                        booking, originalIndex, colors);
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: bookings.isEmpty
+                ? _buildEmptyState(colors)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${bookings.length} Booking Ditemukan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
                         ),
-                ),
-              ),
-            ],
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () async {
+                            _loadBookings();
+                          },
+                          color: colors.primary,
+                          child: ListView.builder(
+                            itemCount: bookings.length,
+                            itemBuilder: (context, index) {
+                              final booking = bookings[index];
+                              return _buildHistoryCard(booking, index, colors);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       );
@@ -325,15 +233,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            selectedFilter == 'Semua' ? Icons.history : Icons.filter_list_off,
+            Icons.history,
             size: 80,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            selectedFilter == 'Semua'
-                ? 'Belum ada riwayat booking'
-                : 'Tidak ada booking dengan status $selectedFilter',
+            'Belum ada riwayat booking',
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey[600],
@@ -342,9 +248,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            selectedFilter == 'Semua'
-                ? 'Mulai booking layanan untuk melihat riwayat'
-                : 'Coba filter status lain',
+            'Mulai booking layanan untuk melihat riwayat',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[500],
@@ -357,9 +261,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   Widget _buildHistoryCard(
-      Map<String, dynamic> booking, int originalIndex, ThemeColors colors) {
-    final status = booking['status'] ?? 'Terjadwal';
-    final isUpcoming = _isUpcoming(booking['date'], booking['time']);
+      Map<String, dynamic> booking, int index, ThemeColors colors) {
+    final isUpcoming =
+        _isUpcoming(booking['date'] ?? '', booking['time'] ?? '');
+    final price = _getPrice(booking);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -374,7 +279,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header dengan info layanan dan status
+              // Header dengan info layanan
               Row(
                 children: [
                   Container(
@@ -384,7 +289,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      IconData(booking['icon'], fontFamily: 'MaterialIcons'),
+                      IconData(booking['icon'] ?? Icons.star.codePoint,
+                          fontFamily: 'MaterialIcons'),
                       color: colors.primary,
                       size: 24,
                     ),
@@ -395,7 +301,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          booking['title'],
+                          booking['title'] ?? 'Layanan',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -404,7 +310,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          booking['price'],
+                          price,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: colors.primary,
@@ -414,114 +320,77 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ],
                     ),
                   ),
-                  // Status chip
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(status).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _getStatusColor(status).withOpacity(0.3),
-                      ),
+                  // Tombol hapus
+                  IconButton(
+                    onPressed: () => _deleteBooking(index),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.red,
+                      size: 20,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _getStatusIcon(status),
-                          size: 14,
-                          color: _getStatusColor(status),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          status,
-                          style: TextStyle(
-                            color: _getStatusColor(status),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                    tooltip: 'Hapus Booking',
                   ),
                 ],
               ),
 
               const SizedBox(height: 12),
+
+              // Divider
               Divider(
                 height: 1,
                 color: Colors.grey[300],
               ),
+
               const SizedBox(height: 12),
 
               // Detail booking
               Row(
                 children: [
+                  Icon(
+                    Icons.schedule,
+                    size: 16,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailRow(
-                          Icons.calendar_today,
-                          '${booking['date']} - ${booking['time']}',
-                          isUpcoming && status == 'Terjadwal'
-                              ? Colors.blue
-                              : Colors.grey[700]!,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildDetailRow(
-                          Icons.payment,
-                          booking['payment'],
-                          Colors.grey[700]!,
-                        ),
-                      ],
+                    child: Text(
+                      _formatDateTime(
+                          booking['date'] ?? '', booking['time'] ?? ''),
+                      style: TextStyle(
+                        color: isUpcoming ? Colors.blue : Colors.grey[700],
+                        fontSize: 14,
+                        fontWeight:
+                            isUpcoming ? FontWeight.w600 : FontWeight.normal,
+                      ),
                     ),
                   ),
-                  // Tombol aksi
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'edit_status':
-                          _showStatusDialog(originalIndex, status);
-                          break;
-                        case 'delete':
-                          _deleteBooking(originalIndex);
-                          break;
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => [
-                      PopupMenuItem<String>(
-                        value: 'edit_status',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 18, color: colors.primary),
-                            const SizedBox(width: 8),
-                            const Text('Ubah Status'),
-                          ],
-                        ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              Row(
+                children: [
+                  Icon(
+                    Icons.payment,
+                    size: 16,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      booking['payment'] ?? 'Cash',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
                       ),
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, size: 18, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Hapus', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
-                    icon: const Icon(
-                      Icons.more_vert,
-                      color: Colors.grey,
                     ),
                   ),
                 ],
               ),
 
               // Indikator booking mendatang
-              if (isUpcoming && status == 'Terjadwal')
+              if (isUpcoming)
                 Container(
                   margin: const EdgeInsets.only(top: 12),
                   padding:
@@ -548,78 +417,40 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     ],
                   ),
                 ),
+
+              // Tampilkan promo jika ada
+              if (booking['promo_used'] != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green[200]!),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.local_offer,
+                          size: 12, color: Colors.green[700]),
+                      const SizedBox(width: 4),
+                      Text(
+                        booking['promo_used'],
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String text, Color textColor) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey[600],
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: textColor, fontSize: 14),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showStatusDialog(int index, String currentStatus) {
-    Get.dialog(
-      Obx(() {
-        final themeController = ThemeController.to;
-        final colors = themeController.getThemeColors();
-
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Ubah Status Booking',
-            style: TextStyle(color: colors.primary),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: ['Terjadwal', 'Selesai', 'Dibatalkan'].map((status) {
-              return RadioListTile<String>(
-                title: Text(
-                  status,
-                  style: const TextStyle(color: Colors.black),
-                ),
-                value: status,
-                groupValue: currentStatus,
-                onChanged: (value) {
-                  Navigator.of(context).pop();
-                  if (value != null && value != currentStatus) {
-                    _updateBookingStatus(index, value);
-                  }
-                },
-                activeColor: colors.primary,
-              );
-            }).toList(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Batal',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ),
-          ],
-        );
-      }),
     );
   }
 
@@ -628,6 +459,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       Obx(() {
         final themeController = ThemeController.to;
         final colors = themeController.getThemeColors();
+        final price = _getPrice(booking);
 
         return AlertDialog(
           backgroundColor: Colors.white,
@@ -635,7 +467,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
-            booking['title'],
+            booking['title'] ?? 'Detail Booking',
             style: TextStyle(
               color: colors.primary,
               fontWeight: FontWeight.bold,
@@ -645,11 +477,21 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDetailItem('Harga', booking['price']),
-              _buildDetailItem(
-                  'Tanggal & Waktu', '${booking['date']} - ${booking['time']}'),
-              _buildDetailItem('Metode Pembayaran', booking['payment']),
-              _buildDetailItem('Status', booking['status'] ?? 'Terjadwal'),
+              _buildDetailItem('Layanan', booking['title'] ?? '-'),
+              if (booking['original_price'] != null &&
+                  booking['final_price'] != null &&
+                  booking['original_price'] != booking['final_price']) ...[
+                _buildDetailItem('Harga Asli', booking['original_price']),
+                if (booking['discount_amount'] != null)
+                  _buildDetailItem('Diskon', booking['discount_amount']),
+                _buildDetailItem('Total Bayar', booking['final_price']),
+              ] else
+                _buildDetailItem('Harga', price),
+              _buildDetailItem('Tanggal', booking['date'] ?? '-'),
+              _buildDetailItem('Waktu', booking['time'] ?? '-'),
+              _buildDetailItem('Pembayaran', booking['payment'] ?? 'Cash'),
+              if (booking['promo_used'] != null)
+                _buildDetailItem('Promo', booking['promo_used']),
             ],
           ),
           actions: [
