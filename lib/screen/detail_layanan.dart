@@ -25,11 +25,40 @@ class DetailLayanan extends StatefulWidget {
 class _DetailLayananState extends State<DetailLayanan> {
   final ThemeController _themeController = Get.find<ThemeController>();
 
+  // Method untuk mendapatkan path gambar berdasarkan judul layanan
+  String _getServiceImage() {
+    String serviceName = widget.title.toLowerCase();
+
+    if (serviceName.contains('tata rias') ||
+        serviceName.contains('makeup') ||
+        serviceName.contains('rias')) {
+      return 'assets/makeup.jpg';
+    } else if (serviceName.contains('potong') &&
+        serviceName.contains('rambut')) {
+      return 'assets/potong.jpg';
+    } else if (serviceName.contains('perawatan') &&
+        serviceName.contains('rambut')) {
+      return 'assets/rambut.jpg';
+    } else if (serviceName.contains('perawatan') &&
+        serviceName.contains('wajah')) {
+      return 'assets/wajah.jpg';
+    } else if (serviceName.contains('wajah') ||
+        serviceName.contains('facial')) {
+      return 'assets/wajah.jpg';
+    } else if (serviceName.contains('rambut')) {
+      return 'assets/rambut.jpg';
+    }
+
+    // Default fallback - return null jika tidak ada yang cocok
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetBuilder<ThemeController>(
       builder: (themeController) {
         final colors = themeController.getThemeColors();
+        String imagePath = _getServiceImage();
 
         return ThemedScaffold(
           appBar: ThemedAppBar(
@@ -40,15 +69,33 @@ class _DetailLayananState extends State<DetailLayanan> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon Section with themed styling
+                // Image Section with fallback to icon
                 Center(
-                  child: AnimatedThemedContainer(
-                    padding: const EdgeInsets.all(20),
-                    withGradient: true,
-                    child: Icon(
-                      widget.icon,
-                      size: 80,
-                      color: Colors.white,
+                  child: Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.primary.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: imagePath.isNotEmpty
+                          ? Image.asset(
+                              imagePath,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                // Fallback ke icon jika gambar tidak ditemukan
+                                return _buildIconFallback(colors);
+                              },
+                            )
+                          : _buildIconFallback(colors),
                     ),
                   ),
                 ),
@@ -132,6 +179,18 @@ class _DetailLayananState extends State<DetailLayanan> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildIconFallback(dynamic colors) {
+    return AnimatedThemedContainer(
+      padding: const EdgeInsets.all(20),
+      withGradient: true,
+      child: Icon(
+        widget.icon,
+        size: 80,
+        color: Colors.white,
+      ),
     );
   }
 }
