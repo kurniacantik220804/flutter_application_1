@@ -2,7 +2,6 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_application_1/database/service_supabase.dart';
-import 'package:flutter_application_1/login/user_service.dart';
 
 class AuthService extends GetxController {
   static AuthService get to => Get.find();
