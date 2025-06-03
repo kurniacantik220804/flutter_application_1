@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BeautyTipsScreen extends StatelessWidget {
   const BeautyTipsScreen({super.key});
@@ -332,28 +334,43 @@ Yang harus dihindari:
                 ),
                 const SizedBox(height: 12),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        // TODO: Implement share functionality
-                      },
-                      icon: const Icon(Icons.share, size: 16),
-                      label: const Text('Share'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.pinkAccent,
-                      ),
+                    _buildSocialShareButton(
+                      icon: Icons.share,
+                      label: 'Share',
+                      color: Colors.blue,
+                      onPressed: () => _shareGeneral(tips),
                     ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      onPressed: () {
-                        // TODO: Implement bookmark functionality
-                      },
-                      icon: const Icon(Icons.bookmark_border, size: 16),
-                      label: const Text('Simpan'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.pinkAccent,
-                      ),
+                    _buildSocialShareButton(
+                      icon: Icons.facebook,
+                      label: 'Facebook',
+                      color: const Color(0xFF1877F2),
+                      onPressed: () => _shareToFacebook(tips),
+                    ),
+                    _buildSocialShareButton(
+                      icon: Icons.message,
+                      label: 'WhatsApp',
+                      color: const Color(0xFF25D366),
+                      onPressed: () => _shareToWhatsApp(tips),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildSocialShareButton(
+                      icon: Icons.camera_alt,
+                      label: 'Instagram',
+                      color: const Color(0xFFE4405F),
+                      onPressed: () => _shareToInstagram(tips),
+                    ),
+                    _buildSocialShareButton(
+                      icon: Icons.flutter_dash,
+                      label: 'Twitter',
+                      color: const Color(0xFF1DA1F2),
+                      onPressed: () => _shareToTwitter(tips),
                     ),
                   ],
                 ),
@@ -363,6 +380,153 @@ Yang harus dihindari:
         ],
       ),
     );
+  }
+
+  Widget _buildSocialShareButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ElevatedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 16, color: Colors.white),
+          label: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            elevation: 2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // General share function using share_plus
+  void _shareGeneral(TipsData tips) {
+    final String shareText = '''
+🌟 Tips ${tips.title} 🌟
+
+${tips.subtitle}
+
+${tips.content}
+
+#TipsKecantikan #BeautyCare #SelfCare
+    ''';
+
+    Share.share(shareText, subject: 'Tips Kecantikan: ${tips.title}');
+  }
+
+  // Share to Facebook
+  void _shareToFacebook(TipsData tips) async {
+    final String text = '''
+🌟 Tips ${tips.title} 🌟
+
+${tips.subtitle}
+
+${tips.content}
+
+#TipsKecantikan #BeautyCare #SelfCare
+    ''';
+
+    final String url =
+        'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent('https://example.com')}&quote=${Uri.encodeComponent(text)}';
+
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      // Fallback to general share
+      _shareGeneral(tips);
+    }
+  }
+
+  // Share to WhatsApp
+  void _shareToWhatsApp(TipsData tips) async {
+    final String text = '''
+🌟 *Tips ${tips.title}* 🌟
+
+_${tips.subtitle}_
+
+${tips.content}
+
+#TipsKecantikan #BeautyCare #SelfCare
+    ''';
+
+    final String url = 'https://wa.me/?text=${Uri.encodeComponent(text)}';
+
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      // Fallback to general share
+      _shareGeneral(tips);
+    }
+  }
+
+  // Share to Instagram (will open Instagram app)
+  void _shareToInstagram(TipsData tips) async {
+    final String text = '''
+🌟 Tips ${tips.title} 🌟
+
+${tips.subtitle}
+
+${tips.content}
+
+#TipsKecantikan #BeautyCare #SelfCare #Beauty #Skincare
+    ''';
+
+    // Instagram doesn't support direct text sharing via URL, so we use general share
+    // This will show Instagram as an option if installed
+    Share.share(text, subject: 'Tips Kecantikan: ${tips.title}');
+  }
+
+  // Share to Twitter
+  void _shareToTwitter(TipsData tips) async {
+    final String text = '''
+🌟 Tips ${tips.title} 🌟
+
+${tips.subtitle}
+
+#TipsKecantikan #BeautyCare #SelfCare
+    ''';
+
+    final String url =
+        'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(text)}';
+
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      // Fallback to general share
+      _shareGeneral(tips);
+    }
+  }
+
+  // Save bookmark function (placeholder)
+  void _saveBookmark(TipsData tips) {
+    // TODO: Implement actual bookmark saving to local storage or database
+    // For now, just show a snackbar
+    // You can implement this with GetStorage, SharedPreferences, or SQLite
+
+    // Example implementation would be:
+    // final storage = GetStorage();
+    // List<String> bookmarks = storage.read('bookmarks') ?? [];
+    // bookmarks.add(tips.title);
+    // storage.write('bookmarks', bookmarks);
+
+    print('Bookmark saved: ${tips.title}');
   }
 }
 
