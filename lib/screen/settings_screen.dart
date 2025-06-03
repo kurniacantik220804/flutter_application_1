@@ -6,6 +6,7 @@ import 'edit_profile_screen.dart';
 import 'package:flutter_application_1/theme/theme_settings_screen.dart';
 import 'package:flutter_application_1/database/service_supabase.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/database/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,7 +22,12 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   String userName = 'Loading...';
   String userEmail = 'Loading...';
+  String userRole = 'Loading...';
+  String roleDisplayName = 'Loading...';
   bool isLoading = true;
+
+  // Get AuthService instance
+  final AuthService authService = Get.find<AuthService>();
 
   @override
   void initState() {
@@ -53,11 +59,17 @@ class _SettingsScreenState extends State<SettingsScreen>
               user.email?.split('@')[0] ??
               'Pengguna';
         }
+
+        // Get user role from AuthService
+        userRole = authService.currentUserRole;
+        roleDisplayName = _getRoleDisplayName(userRole);
       } else {
         // Fallback to local storage if no user session
         final box = GetStorage();
         userName = box.read('registered_name') ?? 'Pengguna';
         userEmail = box.read('registered_email') ?? 'user@example.com';
+        userRole = box.read('user_role') ?? 'guest';
+        roleDisplayName = _getRoleDisplayName(userRole);
       }
     } catch (e) {
       print('Error loading user data: $e');
@@ -65,12 +77,50 @@ class _SettingsScreenState extends State<SettingsScreen>
       final box = GetStorage();
       userName = box.read('registered_name') ?? 'Pengguna';
       userEmail = box.read('registered_email') ?? 'user@example.com';
+      userRole = box.read('user_role') ?? 'guest';
+      roleDisplayName = _getRoleDisplayName(userRole);
     } finally {
       if (mounted) {
         setState(() {
           isLoading = false;
         });
       }
+    }
+  }
+
+  String _getRoleDisplayName(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return 'Admin';
+      case 'user':
+        return 'Customer';
+      case 'guest':
+      default:
+        return 'Guest';
+    }
+  }
+
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Colors.red;
+      case 'user':
+        return Colors.blue;
+      case 'guest':
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getRoleIcon(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Icons.admin_panel_settings;
+      case 'user':
+        return Icons.person;
+      case 'guest':
+      default:
+        return Icons.person_outline;
     }
   }
 
@@ -119,12 +169,16 @@ class _SettingsScreenState extends State<SettingsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Section
+            // Profile Section with Role
             _ProfileSection(
               userName: userName,
               userEmail: userEmail,
+              userRole: userRole,
+              roleDisplayName: roleDisplayName,
               isLoading: isLoading,
               colors: colors,
+              getRoleColor: _getRoleColor,
+              getRoleIcon: _getRoleIcon,
               onEditPressed: isLoading
                   ? null
                   : () {
@@ -182,12 +236,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           ElevatedButton(
             onPressed: () async {
               try {
-                // Logout from Supabase
-                await SupabaseService.to.signOut();
-
-                // Clear local storage
-                final box = GetStorage();
-                box.remove('is_logged_in');
+                // Logout using AuthService
+                await authService.logout();
 
                 // Navigate to login screen
                 if (mounted) {
@@ -226,19 +276,27 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 }
 
-// Separate stateless widgets untuk optimasi performa
+// Updated Profile Section with Role Display
 class _ProfileSection extends StatelessWidget {
   final String userName;
   final String userEmail;
+  final String userRole;
+  final String roleDisplayName;
   final bool isLoading;
   final ThemeColors colors;
+  final Color Function(String) getRoleColor;
+  final IconData Function(String) getRoleIcon;
   final VoidCallback? onEditPressed;
 
   const _ProfileSection({
     required this.userName,
     required this.userEmail,
+    required this.userRole,
+    required this.roleDisplayName,
     required this.isLoading,
     required this.colors,
+    required this.getRoleColor,
+    required this.getRoleIcon,
     this.onEditPressed,
   });
 
@@ -261,56 +319,93 @@ class _ProfileSection extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 35,
-            backgroundColor: Colors.white,
-            child: isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: colors.primary,
-                      strokeWidth: 2,
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 35,
+                backgroundColor: Colors.white,
+                child: isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: colors.primary,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: colors.primary,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isLoading ? 'Loading...' : userName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  )
-                : Text(
-                    userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: colors.primary,
+                    const SizedBox(height: 4),
+                    Text(
+                      isLoading ? 'Loading...' : userEmail,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
                     ),
-                  ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isLoading ? 'Loading...' : userName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white),
+                onPressed: onEditPressed,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Role Badge
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isLoading ? Icons.hourglass_empty : getRoleIcon(userRole),
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  isLoading ? 'Loading...' : userEmail,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
+                  isLoading ? 'Loading...' : 'Role: $roleDisplayName',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: onEditPressed,
           ),
         ],
       ),
@@ -318,6 +413,7 @@ class _ProfileSection extends StatelessWidget {
   }
 }
 
+// Keep the existing _SettingsOptions class unchanged
 class _SettingsOptions extends StatelessWidget {
   final ThemeColors colors;
 

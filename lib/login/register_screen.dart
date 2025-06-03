@@ -19,7 +19,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
@@ -40,7 +39,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // Validasi input
     if (nameController.text.trim().isEmpty ||
         emailController.text.trim().isEmpty ||
-        phoneController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty ||
         confirmPasswordController.text.trim().isEmpty) {
       _showSnackBar('Semua kolom harus diisi', Colors.red);
@@ -54,11 +52,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!GetUtils.isEmail(emailController.text.trim())) {
       _showSnackBar('Format email tidak valid', Colors.red);
-      return;
-    }
-
-    if (phoneController.text.trim().length < 10) {
-      _showSnackBar('Nomor HP minimal 10 digit', Colors.red);
       return;
     }
 
@@ -86,7 +79,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: passwordController.text,
         data: {
           'full_name': nameController.text.trim(),
-          'phone_number': phoneController.text.trim(),
           'role': selectedRole, // Metadata role
         },
         emailRedirectTo: null,
@@ -98,16 +90,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Step 2: Wait a moment for auth to settle
         await Future.delayed(const Duration(milliseconds: 500));
 
-        // Step 3: Insert profile data dengan EXPLICIT role
+        // Step 3: Insert profile data dengan struktur yang sesuai database
         try {
           final profileData = {
             'id': authResponse.user!.id,
             'username': nameController.text.trim(),
-            'full_name': nameController.text.trim(),
-            'phone_number': phoneController.text.trim(),
-            'email': emailController.text.trim(),
             'role': selectedRole, // PASTIKAN role disimpan
-            'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
           };
 
@@ -139,7 +127,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Clear all fields
           nameController.clear();
           emailController.clear();
-          phoneController.clear();
           passwordController.clear();
           confirmPasswordController.clear();
           setState(() {
@@ -160,9 +147,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             print('Attempting to update existing profile...');
             await Supabase.instance.client.from('profiles').update({
               'username': nameController.text.trim(),
-              'full_name': nameController.text.trim(),
-              'phone_number': phoneController.text.trim(),
-              'email': emailController.text.trim(),
               'role': selectedRole, // Update role
               'updated_at': DateTime.now().toIso8601String(),
             }).eq('id', authResponse.user!.id);
@@ -173,7 +157,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // Clear and navigate
             nameController.clear();
             emailController.clear();
-            phoneController.clear();
             passwordController.clear();
             confirmPasswordController.clear();
 
@@ -245,7 +228,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    phoneController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
@@ -528,14 +510,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
 
+                      // Username field (mengganti nama lengkap)
                       TextField(
                         controller: nameController,
                         keyboardType: TextInputType.name,
                         enabled: !isLoading,
                         textCapitalization: TextCapitalization.words,
                         decoration: InputDecoration(
-                          labelText: "Nama Lengkap / Username",
-                          hintText: "Masukkan nama atau username",
+                          labelText: "Username",
+                          hintText: "Masukkan username",
                           prefixIcon: const Icon(Icons.person_outline,
                               color: Colors.pink),
                           border: OutlineInputBorder(
@@ -549,6 +532,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Email field
                       TextField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -569,26 +553,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      TextField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        enabled: !isLoading,
-                        decoration: InputDecoration(
-                          labelText: "Nomor HP",
-                          hintText: "Contoh: 08123456789",
-                          prefixIcon: const Icon(Icons.phone_outlined,
-                              color: Colors.pink),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                const BorderSide(color: Colors.pink, width: 2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
+                      // Password field
                       TextField(
                         controller: passwordController,
                         obscureText: !passwordVisible,
@@ -618,6 +583,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Confirm Password field
                       TextField(
                         controller: confirmPasswordController,
                         obscureText: !confirmPasswordVisible,

@@ -29,7 +29,7 @@ class AuthService extends GetxController {
   void _loadStoredUserRole() {
     final storedRole = storage.read('user_role') ?? 'guest';
     _currentUserRole.value = storedRole;
-    print('Loaded stored user role: $storedRole');
+    print('🔍 Loaded stored user role: $storedRole');
   }
 
   // Listen to auth state changes
@@ -37,24 +37,99 @@ class AuthService extends GetxController {
     SupabaseService.to.authStateChanges.listen((data) {
       final user = data.session?.user;
       if (user != null) {
+        print('🔄 Auth state changed, refreshing user role for: ${user.id}');
         _refreshUserRole();
       } else {
+        print('🚪 User logged out, clearing data');
         _clearUserData();
       }
     });
   }
 
-  // Refresh user role from database
+  // Enhanced refresh user role from database with better error handling
   Future<void> _refreshUserRole() async {
     try {
-      final role = await UserService.getCurrentUserRole();
-      _currentUserRole.value = role;
-      await storage.write('user_role', role);
-      print('Refreshed user role: $role');
+      final user = SupabaseService.to.currentUser;
+      if (user == null) {
+        print('❌ No current user found');
+        _currentUserRole.value = 'guest';
+        return;
+      }
+
+      print('🔍 Fetching role for user: ${user.id}');
+
+      // Try to get role from profiles table
+      final response = await SupabaseService.to.client
+          .from('profiles')
+          .select('role, username, full_name, email, phone_number')
+          .eq('id', user.id)
+          .maybeSingle(); // Use maybeSingle to avoid exception if no record
+
+      if (response != null && response['role'] != null) {
+        final role = response['role'] as String;
+        print('✅ Role found in database: $role');
+
+        _currentUserRole.value = role;
+        await storage.write('user_role', role);
+
+        // Also store other user data
+        await storage.write('user_id', user.id);
+        await storage.write('user_name',
+            response['full_name'] ?? response['username'] ?? 'User');
+        await storage.write('user_email', response['email'] ?? user.email);
+        await storage.write('user_phone', response['phone_number']);
+
+        print('💾 Stored user data - Role: $role');
+      } else {
+        print('⚠️  No profile found in database, checking auth metadata');
+
+        // Fallback: check auth user metadata
+        final userMetadata = user.userMetadata;
+        final metadataRole = userMetadata?['role'] as String?;
+
+        if (metadataRole != null) {
+          print('📋 Found role in metadata: $metadataRole');
+          _currentUserRole.value = metadataRole;
+          await storage.write('user_role', metadataRole);
+
+          // Try to create profile record
+          await _createMissingProfile(user, metadataRole);
+        } else {
+          print('❌ No role found anywhere, defaulting to user');
+          _currentUserRole.value = 'user';
+          await storage.write('user_role', 'user');
+        }
+      }
     } catch (e) {
-      print('Error refreshing user role: $e');
-      _currentUserRole.value = 'user'; // Default fallback
+      print('❌ Error refreshing user role: $e');
+      _currentUserRole.value = 'user'; // Safe fallback
       await storage.write('user_role', 'user');
+    }
+  }
+
+  // Create missing profile record
+  Future<void> _createMissingProfile(User user, String role) async {
+    try {
+      print('🔧 Creating missing profile for user: ${user.id}');
+
+      final profileData = {
+        'id': user.id,
+        'email': user.email,
+        'role': role,
+        'username': user.email?.split('@')[0] ?? 'User',
+        'full_name': user.userMetadata?['full_name'] ??
+            user.email?.split('@')[0] ??
+            'User',
+        'phone_number': user.userMetadata?['phone_number'],
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      await SupabaseService.to.client.from('profiles').insert(profileData);
+
+      print('✅ Profile created successfully');
+    } catch (e) {
+      print('❌ Error creating profile: $e');
     }
   }
 
@@ -66,16 +141,17 @@ class AuthService extends GetxController {
     storage.remove('user_name');
     storage.remove('user_email');
     storage.remove('user_phone');
-    print('User data cleared');
+    print('🧹 User data cleared');
   }
 
-  // Enhanced login with role detection
+  // Enhanced login with better role detection
   Future<LoginResult> loginWithRole({
     required String email,
     required String password,
   }) async {
     try {
       _isLoading.value = true;
+      print('🔐 Starting login for: $email');
 
       // Step 1: Authenticate user
       final AuthResponse response = await SupabaseService.to.signIn(
@@ -84,6 +160,7 @@ class AuthService extends GetxController {
       );
 
       if (response.user == null || response.session == null) {
+        print('❌ Login failed: No session created');
         return LoginResult(
           success: false,
           message: 'Login gagal: Tidak ada session yang dibuat',
@@ -91,15 +168,67 @@ class AuthService extends GetxController {
         );
       }
 
-      // Step 2: Get user profile and role
-      final userProfile = await UserService.getUserProfile();
-      final userRole = await UserService.getCurrentUserRole();
+      print('✅ Auth successful for user: ${response.user!.id}');
 
-      // Step 3: Store user data
+      // Step 2: Wait for database consistency
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Step 3: Get user profile and role with multiple attempts
+      String userRole = 'user';
+      Map<String, dynamic>? userProfile;
+
+      for (int attempt = 0; attempt < 3; attempt++) {
+        try {
+          print('🔍 Attempt ${attempt + 1}: Fetching user profile');
+
+          final profileResponse = await SupabaseService.to.client
+              .from('profiles')
+              .select('*')
+              .eq('id', response.user!.id)
+              .maybeSingle();
+
+          if (profileResponse != null) {
+            userProfile = profileResponse;
+            userRole = profileResponse['role'] ?? 'user';
+            print('✅ Profile found: role = $userRole');
+            break;
+          } else {
+            print('⚠️  Profile not found, attempt ${attempt + 1}');
+            if (attempt < 2) {
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+          }
+        } catch (e) {
+          print('❌ Error fetching profile (attempt ${attempt + 1}): $e');
+          if (attempt < 2) {
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+        }
+      }
+
+      // Step 4: Fallback to metadata if profile not found
+      if (userProfile == null) {
+        print('🔄 Using auth metadata as fallback');
+        final metadata = response.user!.userMetadata;
+        userRole = metadata?['role'] ?? 'user';
+
+        userProfile = {
+          'id': response.user!.id,
+          'email': response.user!.email,
+          'role': userRole,
+          'full_name':
+              metadata?['full_name'] ?? response.user!.email?.split('@')[0],
+          'phone_number': metadata?['phone_number'],
+        };
+      }
+
+      // Step 5: Store user data
       await _storeUserData(response.user!, userProfile, userRole);
 
-      // Step 4: Update reactive role
+      // Step 6: Update reactive role
       _currentUserRole.value = userRole;
+
+      print('🎉 Login successful with role: $userRole');
 
       return LoginResult(
         success: true,
@@ -108,12 +237,14 @@ class AuthService extends GetxController {
         userProfile: userProfile,
       );
     } on AuthException catch (e) {
+      print('❌ Auth exception: ${e.message}');
       return LoginResult(
         success: false,
         message: _getAuthErrorMessage(e),
         userRole: 'guest',
       );
     } catch (e) {
+      print('❌ General error during login: $e');
       return LoginResult(
         success: false,
         message: 'Terjadi kesalahan: ${e.toString()}',
@@ -143,16 +274,16 @@ class AuthService extends GetxController {
       await storage.write('user_email', user.email);
     }
 
-    print('User data stored - Role: $userRole, ID: ${user.id}');
+    print('💾 User data stored - Role: $userRole, ID: ${user.id}');
   }
 
-  // Get login success message based on role
+  // Enhanced login success message
   String _getLoginSuccessMessage(String role) {
     switch (role.toLowerCase()) {
       case 'admin':
-        return '🔑 Login berhasil sebagai ADMINISTRATOR!';
+        return '🔑 Login berhasil sebagai ADMINISTRATOR! Selamat datang, Admin.';
       case 'user':
-        return '👤 Login berhasil sebagai USER!';
+        return '👤 Login berhasil sebagai USER! Selamat datang.';
       default:
         return '✅ Login berhasil!';
     }
@@ -186,11 +317,12 @@ class AuthService extends GetxController {
   Future<void> logout() async {
     try {
       _isLoading.value = true;
+      print('🚪 Logging out user');
       await SupabaseService.to.signOut();
       _clearUserData();
-      print('Logout successful');
+      print('✅ Logout successful');
     } catch (e) {
-      print('Logout error: $e');
+      print('❌ Logout error: $e');
       rethrow;
     } finally {
       _isLoading.value = false;
@@ -204,7 +336,7 @@ class AuthService extends GetxController {
       await SupabaseService.to.resetPassword(email);
       return true;
     } catch (e) {
-      print('Reset password error: $e');
+      print('❌ Reset password error: $e');
       rethrow;
     } finally {
       _isLoading.value = false;
@@ -278,6 +410,25 @@ class AuthService extends GetxController {
           'description': 'Tamu'
         };
     }
+  }
+
+  // Manual role refresh (for debugging)
+  Future<void> forceRefreshRole() async {
+    print('🔄 Forcing role refresh...');
+    await _refreshUserRole();
+  }
+
+  // Debug current state
+  void debugCurrentState() {
+    print('=== AUTH SERVICE DEBUG ===');
+    print('Current User Role: ${_currentUserRole.value}');
+    print('Is Admin: $isAdmin');
+    print('Is User: $isUser');
+    print('Is Guest: $isGuest');
+    print('Stored Role: ${storage.read('user_role')}');
+    print('Stored Name: ${storage.read('user_name')}');
+    print('Stored Email: ${storage.read('user_email')}');
+    print('========================');
   }
 }
 
