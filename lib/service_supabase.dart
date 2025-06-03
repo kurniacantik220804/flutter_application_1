@@ -267,6 +267,84 @@ class SupabaseService extends GetxController {
       print('Get user bookings error: $e');
       rethrow;
     }
+  // ==================== PRODUK FUNCTIONS ====================
+
+// Tambah Produk
+Future<Map<String, dynamic>?> tambahProduk({
+  required String namaProduk,
+  required double hargaProduk,
+}) async {
+  try {
+    final response = await _client
+        .from('produk')
+        .insert({
+          'nama_produk': namaProduk,
+          'harga_produk': hargaProduk,
+        })
+        .select()
+        .single();
+
+    print('Produk berhasil ditambahkan: ${response['id']}');
+    return response;
+  } catch (e) {
+    print('Tambah produk error: $e');
+    rethrow;
+  }
+}
+
+// Ambil Semua Produk
+Future<List<Map<String, dynamic>>> getSemuaProduk() async {
+  try {
+    final response = await _client
+        .from('produk')
+        .select()
+        .order('nama_produk', ascending: true);
+
+    print('Total produk diambil: ${response.length}');
+    return List<Map<String, dynamic>>.from(response);
+  } catch (e) {
+    print('Get semua produk error: $e');
+    rethrow;
+  }
+}
+
+// Update Produk
+Future<void> updateProduk({
+  required String id,
+  required String namaProduk,
+  required double hargaProduk,
+}) async {
+  try {
+    await _client
+        .from('produk')
+        .update({
+          'nama_produk': namaProduk,
+          'harga_produk': hargaProduk,
+        })
+        .eq('id', id);
+
+    print('Produk berhasil diupdate: $id');
+  } catch (e) {
+    print('Update produk error: $e');
+    rethrow;
+  }
+}
+
+// Hapus Produk
+Future<void> hapusProduk(String id) async {
+  try {
+    await _client
+        .from('produk')
+        .delete()
+        .eq('id', id);
+
+    print('Produk berhasil dihapus: $id');
+  } catch (e) {
+    print('Hapus produk error: $e');
+    rethrow;
+  }
+}
+
   }
 
   // Get bookings by status

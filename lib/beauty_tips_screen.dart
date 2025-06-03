@@ -1,73 +1,112 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'theme_controller.dart';
 
-class BeautyTipsScreen extends StatelessWidget {
+class BeautyTipsScreen extends StatefulWidget {
   const BeautyTipsScreen({super.key});
 
   @override
+  State<BeautyTipsScreen> createState() => _BeautyTipsScreenState();
+}
+
+class _BeautyTipsScreenState extends State<BeautyTipsScreen> {
+  final ThemeController themeController = ThemeController.to;
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tips Kecantikan'),
-        backgroundColor: Colors.pinkAccent,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeaderSection(),
-              const SizedBox(height: 20),
-              _buildTipsGrid(),
-            ],
+    return Obx(() {
+      final colors = themeController.getThemeColors();
+      
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Tips Kecantikan'),
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [colors.primary, colors.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
           ),
         ),
-      ),
-    );
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: themeController.getBackgroundGradient(),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeaderSection(),
+                  const SizedBox(height: 20),
+                  _buildTipsGrid(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildHeaderSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.pinkAccent, Colors.pink[300]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.lightbulb, size: 40, color: Colors.white),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tips Kecantikan',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Panduan lengkap perawatan kecantikan dari ahli',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
+    return Obx(() {
+      final colors = themeController.getThemeColors();
+      
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors.primary, colors.secondary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-    );
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.lightbulb, size: 40, color: Colors.white),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tips Kecantikan',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Panduan lengkap perawatan kecantikan dari ahli',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildTipsGrid() {
@@ -76,8 +115,6 @@ class BeautyTipsScreen extends StatelessWidget {
         title: 'Rambut Sehat',
         subtitle: 'Konsumsi vitamin untuk rambut',
         icon: Icons.favorite,
-        color: Colors.red[50]!,
-        iconColor: Colors.red,
         content: '''
 Tips untuk menjaga kesehatan rambut:
 
@@ -101,8 +138,6 @@ Bahan alami untuk masker rambut:
         title: 'Kulit Wajah',
         subtitle: 'Gunakan tabir surya setiap hari',
         icon: Icons.wb_sunny,
-        color: Colors.orange[50]!,
-        iconColor: Colors.orange,
         content: '''
 Rutina perawatan wajah harian:
 
@@ -131,8 +166,6 @@ Tips tambahan:
         title: 'Makeup Natural',
         subtitle: 'Gunakan warna alami',
         icon: Icons.face,
-        color: Colors.pink[50]!,
-        iconColor: Colors.pink,
         content: '''
 Panduan makeup natural sehari-hari:
 
@@ -164,8 +197,6 @@ Tips aplikasi:
         title: 'Perawatan Kuku',
         subtitle: 'Kuku sehat dan terawat',
         icon: Icons.gesture,
-        color: Colors.purple[50]!,
-        iconColor: Colors.purple,
         content: '''
 Cara merawat kuku yang benar:
 
@@ -198,8 +229,6 @@ Tanda kuku sehat:
         title: 'Body Care',
         subtitle: 'Kulit tubuh lembut dan sehat',
         icon: Icons.spa_outlined,
-        color: Colors.green[50]!,
-        iconColor: Colors.green,
         content: '''
 Rutina perawatan tubuh:
 
@@ -232,8 +261,6 @@ Tips khusus:
         title: 'Diet Kecantikan',
         subtitle: 'Nutrisi untuk kecantikan dari dalam',
         icon: Icons.restaurant,
-        color: Colors.teal[50]!,
-        iconColor: Colors.teal,
         content: '''
 Makanan untuk kecantikan alami:
 
@@ -272,97 +299,140 @@ Yang harus dihindari:
   }
 
   Widget _buildTipsCard(TipsData tips) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ExpansionTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: tips.color,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(tips.icon, color: tips.iconColor, size: 24),
+    return Obx(() {
+      final colors = themeController.getThemeColors();
+      
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        title: Text(
-          tips.title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: colors.primary,
+            ),
           ),
-        ),
-        subtitle: Text(
-          tips.subtitle,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: tips.color,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    tips.content.trim(),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+          child: ExpansionTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(tips.icon, color: colors.primary, size: 24),
+            ),
+            title: Text(
+              tips.title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: colors.primary,
+              ),
+            ),
+            subtitle: Text(
+              tips.subtitle,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+            ),
+            iconColor: colors.primary,
+            collapsedIconColor: colors.primary,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        // TODO: Implement share functionality
-                      },
-                      icon: const Icon(Icons.share, size: 16),
-                      label: const Text('Share'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.pinkAccent,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            colors.primary.withOpacity(0.05),
+                            colors.secondary.withOpacity(0.03),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colors.primary.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        tips.content.trim(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      onPressed: () {
-                        // TODO: Implement bookmark functionality
-                      },
-                      icon: const Icon(Icons.bookmark_border, size: 16),
-                      label: const Text('Simpan'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.pinkAccent,
-                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            // TODO: Implementasi fungsi bagikan
+                            Get.snackbar(
+                              'Bagikan',
+                              'Fitur bagikan akan segera tersedia',
+                              backgroundColor: colors.primary.withOpacity(0.9),
+                              colorText: Colors.white,
+                              snackPosition: SnackPosition.BOTTOM,
+                              margin: const EdgeInsets.all(16),
+                              borderRadius: 8,
+                            );
+                          },
+                          icon: const Icon(Icons.share, size: 16),
+                          label: const Text('Bagikan'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton.icon(
+                          onPressed: () {
+                            // TODO: Implementasi fungsi simpan
+                            Get.snackbar(
+                              'Simpan',
+                              'Tips berhasil disimpan',
+                              backgroundColor: colors.secondary.withOpacity(0.9),
+                              colorText: Colors.white,
+                              snackPosition: SnackPosition.BOTTOM,
+                              margin: const EdgeInsets.all(16),
+                              borderRadius: 8,
+                            );
+                          },
+                          icon: const Icon(Icons.bookmark_border, size: 16),
+                          label: const Text('Simpan'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colors.secondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ),
+      );
+    });
   }
 }
 
@@ -370,16 +440,12 @@ class TipsData {
   final String title;
   final String subtitle;
   final IconData icon;
-  final Color color;
-  final Color iconColor;
   final String content;
 
   TipsData({
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.color,
-    required this.iconColor,
     required this.content,
   });
 }

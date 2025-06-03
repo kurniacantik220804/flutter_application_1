@@ -11,6 +11,9 @@ class PromoScreen extends StatefulWidget {
 
 class _PromoScreenState extends State<PromoScreen> {
   final ThemeController themeController = ThemeController.to;
+  
+  // Daftar untuk melacak voucher yang sudah diklaim - updated untuk 4 voucher
+  final List<bool> _claimedVouchers = [false, false, false, false];
 
   @override
   Widget build(BuildContext context) {
@@ -60,207 +63,101 @@ class _PromoScreenState extends State<PromoScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                _buildPromoCard(
-                  context,
-                  'Diskon 30% Potong Rambut',
-                  'Berlaku hingga 31 Mei 2025',
-                  'Nikmati potongan rambut dengan harga spesial! Dapatkan diskon 30% untuk layanan potong rambut kami.',
-                  colors.primary,
-                  Icons.cut,
-                  'Rp 25.000',
-                  'Rp 17.500',
-                ),
+                // Voucher 1 - Diskon Potong Rambut (30%)
+                if (!_claimedVouchers[0])
+                  _buildPromoCard(
+                    context,
+                    'Diskon 30% Potong Rambut',
+                    'Berlaku hingga 31 Mei 2025',
+                    'Nikmati potongan rambut dengan harga spesial! Dapatkan diskon 30% untuk layanan potong rambut kami.',
+                    colors.primary,
+                    Icons.cut,
+                    'Rp 25.000',
+                    'Rp 17.500',
+                    0,
+                  ),
 
-                _buildPromoCard(
-                  context,
-                  'Buy 1 Get 1 Facial',
-                  'Berlaku hingga 15 Juni 2025',
-                  'Bawa teman Anda dan nikmati layanan facial bersama! Beli 1 treatment facial, dapatkan 1 treatment gratis.',
-                  colors.secondary,
-                  Icons.spa,
-                  'Rp 40.000',
-                  'Untuk 2 orang',
-                ),
+                // Voucher 2 - Diskon Perawatan Wajah (15%)
+                if (!_claimedVouchers[1])
+                  _buildPromoCard(
+                    context,
+                    'Diskon 15% Perawatan Wajah',
+                    'Berlaku hingga 15 Juni 2025',
+                    'Dapatkan perawatan wajah terbaik dengan diskon spesial 15% untuk semua layanan perawatan wajah.',
+                    colors.secondary,
+                    Icons.spa,
+                    'Rp 40.000',
+                    'Rp 34.000',
+                    1,
+                  ),
 
-                _buildPromoCard(
-                  context,
-                  'Paket Hemat Makeup',
-                  'Stok terbatas!',
-                  'Paket spesial makeup untuk acara formal dengan harga spesial dan bonus produk kecantikan dari sponsor kami.',
-                  Colors.orange,
-                  Icons.brush,
-                  'Rp 70.000',
-                  'Rp 55.000',
-                ),
+                // Voucher 3 - Paket Hemat Makeup
+                if (!_claimedVouchers[2])
+                  _buildPromoCard(
+                    context,
+                    'Paket Hemat Makeup',
+                    'Stok terbatas!',
+                    'Paket spesial makeup untuk acara formal dengan harga spesial dan bonus produk kecantikan dari sponsor kami.',
+                    Colors.orange,
+                    Icons.brush,
+                    'Rp 70.000',
+                    'Rp 55.000',
+                    2,
+                  ),
 
-                // Special Member Section
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [colors.primary, colors.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                // Voucher 4 - Free Layanan Catok Rambut
+                if (!_claimedVouchers[3])
+                  _buildPromoCard(
+                    context,
+                    'Free Layanan Catok Rambut',
+                    'Berlaku hingga 30 Juni 2025',
+                    'Dapatkan layanan catok rambut gratis untuk setiap pembelian layanan perawatan rambut lainnya.',
+                    Colors.purple,
+                    Icons.straighten,
+                    'Rp 20.000',
+                    'GRATIS',
+                    3,
+                  ),
+
+                // Pesan jika semua voucher sudah diklaim
+                if (_claimedVouchers.every((claimed) => claimed))
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    margin: const EdgeInsets.only(top: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors.primary.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Membership Special',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 48,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Daftar menjadi member dan dapatkan diskon 10% untuk semua layanan sepanjang tahun!',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Fitur membership akan segera hadir!'),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: colors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Semua Promo Telah Diklaim!',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
                           ),
                         ),
-                        child: const Text(
-                          'Daftar Sekarang',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Terima kasih telah menggunakan semua promo kami. Nantikan promo menarik lainnya!',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-
-                // Theme Change Demo Section
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: themeController.getThemedDecoration(
-                    withShadow: true,
-                    borderRadius: 12,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.palette,
-                            color: colors.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Ubah Tema Aplikasi',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: colors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Pilih tema favorit Anda untuk pengalaman yang lebih personal!',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: AppThemeType.values.map((theme) {
-                          Color themeColor;
-                          switch (theme) {
-                            case AppThemeType.pink:
-                              themeColor = const Color(0xFFFF4081);
-                              break;
-                            case AppThemeType.purple:
-                              themeColor = const Color(0xFF9C27B0);
-                              break;
-                            case AppThemeType.teal:
-                              themeColor = const Color(0xFF009688);
-                              break;
-                          }
-                          
-                          final isSelected = themeController.selectedTheme == theme;
-                          
-                          return GestureDetector(
-                            onTap: () => themeController.changeTheme(theme),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: themeColor,
-                                borderRadius: BorderRadius.circular(12),
-                                border: isSelected 
-                                    ? Border.all(color: Colors.white, width: 3)
-                                    : null,
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: themeColor.withOpacity(0.5),
-                                          blurRadius: 10,
-                                          spreadRadius: 2,
-                                        ),
-                                      ]
-                                    : [
-                                        BoxShadow(
-                                          color: themeColor.withOpacity(0.2),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    theme.icon,
-                                    color: Colors.white,
-                                    size: isSelected ? 28 : 24,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    theme.name,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: isSelected ? 12 : 10,
-                                      fontWeight: isSelected 
-                                          ? FontWeight.bold 
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
 
                 // Bottom spacing
                 const SizedBox(height: 100),
@@ -281,6 +178,7 @@ class _PromoScreenState extends State<PromoScreen> {
     IconData icon,
     String originalPrice,
     String promoPrice,
+    int voucherIndex,
   ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -349,19 +247,21 @@ class _PromoScreenState extends State<PromoScreen> {
                   RichText(
                     text: TextSpan(
                       children: [
-                        TextSpan(
-                          text: '$originalPrice ',
-                          style: TextStyle(
-                            decoration: TextDecoration.lineThrough,
-                            color: Colors.grey[600],
-                            fontSize: 14,
+                        if (promoPrice != 'GRATIS') ...[
+                          TextSpan(
+                            text: '$originalPrice ',
+                            style: TextStyle(
+                              decoration: TextDecoration.lineThrough,
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
+                        ],
                         TextSpan(
                           text: promoPrice,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: color,
+                            color: promoPrice == 'GRATIS' ? Colors.green : color,
                             fontSize: 16,
                           ),
                         ),
@@ -370,10 +270,15 @@ class _PromoScreenState extends State<PromoScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () {
+                      setState(() {
+                        _claimedVouchers[voucherIndex] = true;
+                      });
+                      
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Promo $title berhasil diklaim!'),
                           backgroundColor: color,
+                          duration: const Duration(seconds: 2),
                         ),
                       );
                     },
