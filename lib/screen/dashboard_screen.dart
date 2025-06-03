@@ -5,9 +5,8 @@ import 'package:get/get.dart';
 import 'detail_layanan.dart';
 import 'promo_screen.dart';
 import 'riwayat_screen.dart';
-import 'theme_controller.dart';
-import 'theme_widgets.dart';
-import 'service_supabase.dart';
+import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/database/service_supabase.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,7 +20,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<bool>? _upcomingBookingsFuture;
   late ThemeController _themeController;
   String _userName = 'Pelanggan';
-  
+
   // Inisialisasi dengan nilai default untuk menghindari null
   ThemeColors _cachedColors = const ThemeColors(
     primary: Color(0xFFFF4081),
@@ -71,10 +70,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       final supabaseService = SupabaseService.to;
       final user = supabaseService.currentUser;
-      
+
       if (user != null) {
         final profile = await supabaseService.getUserProfile();
-        
+
         if (profile != null && profile['username'] != null) {
           if (mounted) {
             setState(() {
@@ -118,7 +117,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
 
       _updateCachedTheme();
-      
+
       return Scaffold(
         backgroundColor: _cachedColors.background,
         appBar: _buildOptimizedAppBar(),
@@ -168,7 +167,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
       ),
       child: SafeArea(
-        child: CustomScrollView( // Ganti SingleChildScrollView dengan CustomScrollView
+        child: CustomScrollView(
+          // Ganti SingleChildScrollView dengan CustomScrollView
           slivers: [
             SliverPadding(
               padding: const EdgeInsets.all(16),
@@ -176,7 +176,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 delegate: SliverChildListDelegate([
                   _buildOptimizedGreetingSection(),
                   const SizedBox(height: 20),
-                  
                   FutureBuilder<bool>(
                     future: _upcomingBookingsFuture,
                     builder: (context, snapshot) {
@@ -186,13 +185,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                       return const SizedBox.shrink();
                     },
                   ),
-
                   _buildFeaturedServicesHeader(),
                   const SizedBox(height: 12),
                 ]),
               ),
             ),
-            
+
             // GridView sebagai Sliver untuk scroll yang lebih smooth
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -231,7 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ]),
               ),
             ),
-            
+
             // Tambah spacing di bawah
             const SliverPadding(
               padding: EdgeInsets.only(bottom: 120),
@@ -313,7 +311,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         Text(
           'Layanan Unggulan',
           style: TextStyle(
-            fontSize: 18, 
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: _cachedColors.primary,
           ),
@@ -392,7 +390,8 @@ class OptimizedLayananCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),

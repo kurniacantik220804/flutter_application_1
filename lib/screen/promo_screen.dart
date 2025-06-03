@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'theme_controller.dart';
+import 'package:flutter_application_1/theme/theme_controller.dart';
 
 class PromoScreen extends StatefulWidget {
   const PromoScreen({super.key});
@@ -16,7 +16,7 @@ class _PromoScreenState extends State<PromoScreen> {
   Widget build(BuildContext context) {
     return Obx(() {
       final colors = themeController.getThemeColors();
-      
+
       return Scaffold(
         backgroundColor: colors.background,
         appBar: AppBar(
@@ -54,7 +54,7 @@ class _PromoScreenState extends State<PromoScreen> {
                 Text(
                   'Dapatkan penawaran terbaik untuk perawatan kecantikan Anda',
                   style: TextStyle(
-                    fontSize: 16, 
+                    fontSize: 16,
                     color: Colors.grey[700],
                   ),
                 ),
@@ -133,7 +133,8 @@ class _PromoScreenState extends State<PromoScreen> {
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Fitur membership akan segera hadir!'),
+                              content:
+                                  Text('Fitur membership akan segera hadir!'),
                             ),
                           );
                         },
@@ -202,9 +203,10 @@ class _PromoScreenState extends State<PromoScreen> {
                               themeColor = const Color(0xFF009688);
                               break;
                           }
-                          
-                          final isSelected = themeController.selectedTheme == theme;
-                          
+
+                          final isSelected =
+                              themeController.selectedTheme == theme;
+
                           return GestureDetector(
                             onTap: () => themeController.changeTheme(theme),
                             child: AnimatedContainer(
@@ -214,7 +216,7 @@ class _PromoScreenState extends State<PromoScreen> {
                               decoration: BoxDecoration(
                                 color: themeColor,
                                 borderRadius: BorderRadius.circular(12),
-                                border: isSelected 
+                                border: isSelected
                                     ? Border.all(color: Colors.white, width: 3)
                                     : null,
                                 boxShadow: isSelected
@@ -247,8 +249,8 @@ class _PromoScreenState extends State<PromoScreen> {
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: isSelected ? 12 : 10,
-                                      fontWeight: isSelected 
-                                          ? FontWeight.bold 
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
                                           : FontWeight.normal,
                                     ),
                                   ),
@@ -328,7 +330,7 @@ class _PromoScreenState extends State<PromoScreen> {
                         Text(
                           validity,
                           style: TextStyle(
-                            color: Colors.grey[600], 
+                            color: Colors.grey[600],
                             fontSize: 14,
                           ),
                         ),
@@ -339,7 +341,7 @@ class _PromoScreenState extends State<PromoScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                description, 
+                description,
                 style: const TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 12),

@@ -7,14 +7,15 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'dashboard_screen.dart';
-import 'login_2_screen.dart';
 import 'detail_layanan.dart';
 import 'riwayat_screen.dart';
 import 'promo_screen.dart';
 import 'beauty_tips_screen.dart'; // Import beauty tips screen
 import 'settings_screen.dart';
-import 'theme_controller.dart'; // Import theme controller
-import 'theme_widgets.dart'; // Import themed widgets
+import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/theme/theme_settings_screen.dart';
+import 'package:flutter_application_1/login/login_2_screen.dart';
+import 'package:flutter_application_1/theme/theme_widgets.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -142,11 +143,13 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             child: IndexedStack(index: _bottomNavIndex, children: pages),
           ),
           floatingActionButton: ThemedFloatingActionButton(
-            icon: Icons.lightbulb_outline, // Changed from spa to lightbulb for beauty tips
+            icon: Icons
+                .lightbulb_outline, // Changed from spa to lightbulb for beauty tips
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const BeautyTipsScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const BeautyTipsScreen()),
               );
             },
           ),

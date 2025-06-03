@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
-import 'theme_controller.dart';
-import 'theme_widgets.dart';
+import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/theme/theme_settings_screen.dart';
+import 'package:flutter_application_1/theme/theme_widgets.dart';
 
 class DetailLayanan extends StatefulWidget {
   final String title;
@@ -94,11 +95,11 @@ class _DetailLayananState extends State<DetailLayanan> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        widget.deskripsi.isNotEmpty 
-                          ? widget.deskripsi 
-                          : 'Layanan ${widget.title} kami menawarkan pengalaman terbaik dengan '
-                            'staff profesional dan produk berkualitas tinggi. '
-                            'Kami menjamin kepuasan Anda dengan hasil yang maksimal.',
+                        widget.deskripsi.isNotEmpty
+                            ? widget.deskripsi
+                            : 'Layanan ${widget.title} kami menawarkan pengalaman terbaik dengan '
+                                'staff profesional dan produk berkualitas tinggi. '
+                                'Kami menjamin kepuasan Anda dengan hasil yang maksimal.',
                         style: const TextStyle(fontSize: 16, height: 1.5),
                       ),
                     ],
@@ -169,7 +170,7 @@ class _BookingFormState extends State<BookingForm> {
 
   Future<void> _selectDate(BuildContext context) async {
     final colors = _themeController.getThemeColors();
-    
+
     final picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
@@ -198,7 +199,7 @@ class _BookingFormState extends State<BookingForm> {
 
   Future<void> _selectTime(BuildContext context) async {
     final colors = _themeController.getThemeColors();
-    
+
     final picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
@@ -233,8 +234,10 @@ class _BookingFormState extends State<BookingForm> {
       final booking = {
         'title': widget.title,
         'price': widget.price,
-        'date': '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-        'time': '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
+        'date':
+            '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+        'time':
+            '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
         'payment': selectedPayment,
         'icon': widget.icon,
       };
@@ -273,7 +276,7 @@ class _BookingFormState extends State<BookingForm> {
     return GetBuilder<ThemeController>(
       builder: (themeController) {
         final colors = themeController.getThemeColors();
-        
+
         return Form(
           key: _formKey,
           child: Column(
@@ -283,7 +286,8 @@ class _BookingFormState extends State<BookingForm> {
               InkWell(
                 onTap: () => _selectDate(context),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                   decoration: BoxDecoration(
                     border: Border.all(color: colors.primary.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(12),
@@ -294,7 +298,8 @@ class _BookingFormState extends State<BookingForm> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.calendar_today, color: colors.primary, size: 20),
+                          Icon(Icons.calendar_today,
+                              color: colors.primary, size: 20),
                           const SizedBox(width: 12),
                           Text(
                             '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
@@ -302,7 +307,8 @@ class _BookingFormState extends State<BookingForm> {
                           ),
                         ],
                       ),
-                      Icon(Icons.arrow_forward_ios, color: colors.primary, size: 16),
+                      Icon(Icons.arrow_forward_ios,
+                          color: colors.primary, size: 16),
                     ],
                   ),
                 ),
@@ -313,7 +319,8 @@ class _BookingFormState extends State<BookingForm> {
               InkWell(
                 onTap: () => _selectTime(context),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                   decoration: BoxDecoration(
                     border: Border.all(color: colors.primary.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(12),
@@ -324,7 +331,8 @@ class _BookingFormState extends State<BookingForm> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.access_time, color: colors.primary, size: 20),
+                          Icon(Icons.access_time,
+                              color: colors.primary, size: 20),
                           const SizedBox(width: 12),
                           Text(
                             '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
@@ -332,7 +340,8 @@ class _BookingFormState extends State<BookingForm> {
                           ),
                         ],
                       ),
-                      Icon(Icons.arrow_forward_ios, color: colors.primary, size: 16),
+                      Icon(Icons.arrow_forward_ios,
+                          color: colors.primary, size: 16),
                     ],
                   ),
                 ),
@@ -346,7 +355,8 @@ class _BookingFormState extends State<BookingForm> {
               ),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
                   border: Border.all(color: colors.primary.withOpacity(0.3)),
                   borderRadius: BorderRadius.circular(12),
@@ -382,7 +392,7 @@ class _BookingFormState extends State<BookingForm> {
                   onPressed: isLoading ? null : _submitBooking,
                 ),
               ),
-              
+
               // Loading indicator when booking
               if (isLoading)
                 const Padding(

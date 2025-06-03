@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screen/main_screen.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'main_screen.dart';
+import 'package:flutter_application_1/main.dart';
 import 'register_screen.dart';
-import 'service_supabase.dart'; // Import service
+import 'package:flutter_application_1/database/service_supabase.dart';
 
 class Login2Screen extends StatefulWidget {
   const Login2Screen({super.key});
@@ -73,17 +74,16 @@ class _Login2ScreenState extends State<Login2Screen> {
         // Navigate to MainScreen (akan ditangani oleh auth listener di main.dart)
         // Tapi kita bisa juga langsung navigate jika diperlukan
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         if (mounted) {
           Get.offAll(() => const MainScreen());
         }
       } else {
         _showSnackBar('Login gagal: Tidak ada session yang dibuat', Colors.red);
       }
-
     } on AuthException catch (e) {
       String errorMessage = 'Login gagal: ';
-      
+
       // Handle specific error messages
       switch (e.message.toLowerCase()) {
         case 'invalid login credentials':
@@ -101,7 +101,7 @@ class _Login2ScreenState extends State<Login2Screen> {
         default:
           errorMessage += e.message;
       }
-      
+
       _showSnackBar(errorMessage, Colors.red);
     } catch (e) {
       _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
@@ -134,16 +134,16 @@ class _Login2ScreenState extends State<Login2Screen> {
       // Menggunakan SupabaseService untuk reset password
       await SupabaseService.to.resetPassword(emailController.text.trim());
 
-      _showSnackBar('Link reset password telah dikirim ke email Anda', Colors.green);
+      _showSnackBar(
+          'Link reset password telah dikirim ke email Anda', Colors.green);
 
       setState(() {
         isResetMode = false;
         emailController.clear();
       });
-
     } on AuthException catch (e) {
       String errorMessage = 'Reset password gagal: ';
-      
+
       switch (e.message.toLowerCase()) {
         case 'invalid email':
           errorMessage += 'Format email tidak valid';
@@ -154,7 +154,7 @@ class _Login2ScreenState extends State<Login2Screen> {
         default:
           errorMessage += e.message;
       }
-      
+
       _showSnackBar(errorMessage, Colors.red);
     } catch (e) {
       _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
@@ -233,7 +233,7 @@ class _Login2ScreenState extends State<Login2Screen> {
           ),
         ),
         const SizedBox(height: 16),
-        
+
         // Password field
         TextField(
           controller: passwordController,
@@ -257,7 +257,7 @@ class _Login2ScreenState extends State<Login2Screen> {
           ),
         ),
         const SizedBox(height: 10),
-        
+
         // Forgot password link
         Align(
           alignment: Alignment.centerRight,
@@ -268,7 +268,7 @@ class _Login2ScreenState extends State<Login2Screen> {
           ),
         ),
         const SizedBox(height: 24),
-        
+
         // Login button
         SizedBox(
           width: double.infinity,
@@ -299,21 +299,23 @@ class _Login2ScreenState extends State<Login2Screen> {
           ),
         ),
         const SizedBox(height: 20),
-        
+
         // Register option
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text("Belum punya akun? "),
             TextButton(
-              onPressed: isLoading ? null : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RegisterScreen(),
-                  ),
-                );
-              },
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterScreen(),
+                        ),
+                      );
+                    },
               child: const Text(
                 "Daftar",
                 style: TextStyle(
@@ -346,7 +348,7 @@ class _Login2ScreenState extends State<Login2Screen> {
           style: TextStyle(color: Colors.black54),
         ),
         const SizedBox(height: 24),
-        
+
         // Email field
         TextField(
           controller: emailController,
@@ -363,7 +365,7 @@ class _Login2ScreenState extends State<Login2Screen> {
           ),
         ),
         const SizedBox(height: 24),
-        
+
         // Send reset code button
         SizedBox(
           width: double.infinity,
@@ -394,7 +396,7 @@ class _Login2ScreenState extends State<Login2Screen> {
           ),
         ),
         const SizedBox(height: 20),
-        
+
         // Back to login
         TextButton(
           onPressed: isLoading
@@ -485,9 +487,8 @@ class _Login2ScreenState extends State<Login2Screen> {
                       ),
                     ],
                   ),
-                  child: isResetMode
-                      ? buildResetPasswordForm()
-                      : buildLoginForm(),
+                  child:
+                      isResetMode ? buildResetPasswordForm() : buildLoginForm(),
                 ),
                 const SizedBox(height: 40),
               ],

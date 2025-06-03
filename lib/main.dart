@@ -9,14 +9,14 @@ import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'login_2_screen.dart';
-import 'detail_layanan.dart';
-import 'riwayat_screen.dart';
-import 'promo_screen.dart';
-import 'main_screen.dart';
-import 'service_supabase.dart'; // Import service
-import 'theme_controller.dart'; // Import theme controller
-import 'theme_widgets.dart';
+import 'login/login_2_screen.dart';
+import 'screen/detail_layanan.dart';
+import 'screen/riwayat_screen.dart';
+import 'screen/promo_screen.dart';
+import 'screen/main_screen.dart';
+import 'package:flutter_application_1/database/service_supabase.dart';
+import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/theme/theme_widgets.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

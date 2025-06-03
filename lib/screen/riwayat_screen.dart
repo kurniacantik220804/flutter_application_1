@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
-import 'theme_controller.dart';
+import 'package:flutter_application_1/theme/theme_controller.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -256,8 +256,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                               backgroundColor: Colors.grey[100],
                               checkmarkColor: colors.primary,
                               labelStyle: TextStyle(
-                                color: isSelected ? colors.primary : Colors.black87,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected
+                                    ? colors.primary
+                                    : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                           );
@@ -296,8 +300,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                   itemCount: filteredList.length,
                                   itemBuilder: (context, index) {
                                     final booking = filteredList[index];
-                                    final originalIndex = bookings.indexOf(booking);
-                                    return _buildHistoryCard(booking, originalIndex, colors);
+                                    final originalIndex =
+                                        bookings.indexOf(booking);
+                                    return _buildHistoryCard(
+                                        booking, originalIndex, colors);
                                   },
                                 ),
                               ),
@@ -350,7 +356,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildHistoryCard(Map<String, dynamic> booking, int originalIndex, ThemeColors colors) {
+  Widget _buildHistoryCard(
+      Map<String, dynamic> booking, int originalIndex, ThemeColors colors) {
     final status = booking['status'] ?? 'Terjadwal';
     final isUpcoming = _isUpcoming(booking['date'], booking['time']);
 
@@ -409,7 +416,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   ),
                   // Status chip
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(status).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -457,7 +465,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         _buildDetailRow(
                           Icons.calendar_today,
                           '${booking['date']} - ${booking['time']}',
-                          isUpcoming && status == 'Terjadwal' ? Colors.blue : Colors.grey[700]!,
+                          isUpcoming && status == 'Terjadwal'
+                              ? Colors.blue
+                              : Colors.grey[700]!,
                         ),
                         const SizedBox(height: 8),
                         _buildDetailRow(
@@ -514,7 +524,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               if (isUpcoming && status == 'Terjadwal')
                 Container(
                   margin: const EdgeInsets.only(top: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(20),
@@ -523,7 +534,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.blue[700]),
+                      Icon(Icons.access_time,
+                          size: 14, color: Colors.blue[700]),
                       const SizedBox(width: 4),
                       Text(
                         'Booking Mendatang',
@@ -634,7 +646,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildDetailItem('Harga', booking['price']),
-              _buildDetailItem('Tanggal & Waktu', '${booking['date']} - ${booking['time']}'),
+              _buildDetailItem(
+                  'Tanggal & Waktu', '${booking['date']} - ${booking['time']}'),
               _buildDetailItem('Metode Pembayaran', booking['payment']),
               _buildDetailItem('Status', booking['status'] ?? 'Terjadwal'),
             ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'service_supabase.dart'; // Import service
+import 'package:flutter_application_1/database/service_supabase.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});

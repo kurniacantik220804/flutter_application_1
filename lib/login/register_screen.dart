@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'service_supabase.dart'; // Import service
+import 'package:flutter_application_1/database/service_supabase.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,7 +20,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
   void togglePasswordVisibility() {
     setState(() {
@@ -76,7 +77,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       // Sign up user dengan Supabase Auth tanpa email verification
-      final AuthResponse authResponse = await Supabase.instance.client.auth.signUp(
+      final AuthResponse authResponse =
+          await Supabase.instance.client.auth.signUp(
         email: emailController.text.trim(),
         password: passwordController.text,
         data: {
@@ -105,7 +107,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
 
         // Registrasi berhasil
-        _showSnackBar('Pendaftaran berhasil! Anda akan login otomatis.', Colors.green);
+        _showSnackBar(
+            'Pendaftaran berhasil! Anda akan login otomatis.', Colors.green);
 
         // Clear all fields
         nameController.clear();
@@ -118,20 +121,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         await Future.delayed(const Duration(milliseconds: 1500));
 
         if (mounted) {
-          // Jika ada session (email verification disabled), 
+          // Jika ada session (email verification disabled),
           // auth listener akan otomatis mengarahkan ke MainScreen
           // Atau kita bisa langsung pop untuk kembali ke login dan biarkan auth handle
           Navigator.pop(context);
         }
       } else {
-        _showSnackBar('Pendaftaran gagal: User tidak berhasil dibuat', Colors.red);
+        _showSnackBar(
+            'Pendaftaran gagal: User tidak berhasil dibuat', Colors.red);
       }
-
     } on AuthException catch (e) {
       String errorMessage = 'Pendaftaran gagal: ';
-      
+
       // Handle specific error messages
-      if (e.message.toLowerCase().contains('already registered') || 
+      if (e.message.toLowerCase().contains('already registered') ||
           e.message.toLowerCase().contains('user already registered')) {
         errorMessage += 'Email sudah terdaftar';
       } else if (e.message.toLowerCase().contains('invalid email')) {
@@ -143,7 +146,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         errorMessage += e.message;
       }
-      
+
       _showSnackBar(errorMessage, Colors.red);
     } on PostgrestException catch (e) {
       // Handle database errors
@@ -207,7 +210,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-
                 Container(
                   height: 80,
                   width: 80,
@@ -229,7 +231,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 const Text(
                   "Salon Cantik",
                   style: TextStyle(
@@ -239,7 +240,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -277,7 +277,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.info_outline, color: Colors.green, size: 16),
+                            Icon(Icons.info_outline,
+                                color: Colors.green, size: 16),
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -301,11 +302,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: "Nama Lengkap / Username",
                           hintText: "Masukkan nama atau username",
-                          prefixIcon: const Icon(Icons.person_outline, color: Colors.pink),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.person_outline,
+                              color: Colors.pink),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.pink, width: 2),
+                            borderSide:
+                                const BorderSide(color: Colors.pink, width: 2),
                           ),
                         ),
                       ),
@@ -318,11 +322,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: "Alamat Email",
                           hintText: "Contoh: user@email.com",
-                          prefixIcon: const Icon(Icons.email_outlined, color: Colors.pink),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.email_outlined,
+                              color: Colors.pink),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.pink, width: 2),
+                            borderSide:
+                                const BorderSide(color: Colors.pink, width: 2),
                           ),
                         ),
                       ),
@@ -335,11 +342,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: "Nomor HP",
                           hintText: "Contoh: 08123456789",
-                          prefixIcon: const Icon(Icons.phone_outlined, color: Colors.pink),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.phone_outlined,
+                              color: Colors.pink),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.pink, width: 2),
+                            borderSide:
+                                const BorderSide(color: Colors.pink, width: 2),
                           ),
                         ),
                       ),
@@ -351,18 +361,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         enabled: !isLoading,
                         decoration: InputDecoration(
                           labelText: "Password",
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.pink),
+                          prefixIcon: const Icon(Icons.lock_outline,
+                              color: Colors.pink),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              passwordVisible ? Icons.visibility : Icons.visibility_off,
+                              passwordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
                               color: Colors.pink,
                             ),
-                            onPressed: isLoading ? null : togglePasswordVisibility,
+                            onPressed:
+                                isLoading ? null : togglePasswordVisibility,
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.pink, width: 2),
+                            borderSide:
+                                const BorderSide(color: Colors.pink, width: 2),
                           ),
                         ),
                       ),
@@ -374,18 +390,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         enabled: !isLoading,
                         decoration: InputDecoration(
                           labelText: "Konfirmasi Password",
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.pink),
+                          prefixIcon: const Icon(Icons.lock_outline,
+                              color: Colors.pink),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              confirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                              confirmPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
                               color: Colors.pink,
                             ),
-                            onPressed: isLoading ? null : toggleConfirmPasswordVisibility,
+                            onPressed: isLoading
+                                ? null
+                                : toggleConfirmPasswordVisibility,
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.pink, width: 2),
+                            borderSide:
+                                const BorderSide(color: Colors.pink, width: 2),
                           ),
                         ),
                       ),
@@ -445,7 +468,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         children: [
                           const Text("Sudah memiliki akun? "),
                           TextButton(
-                            onPressed: isLoading ? null : () => Navigator.pop(context),
+                            onPressed:
+                                isLoading ? null : () => Navigator.pop(context),
                             child: const Text(
                               "Masuk",
                               style: TextStyle(
