@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_application_1/screen/admin_dashboard_screen.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'dashboard_screen.dart';
@@ -50,7 +51,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> with TickerProviderSt
 
     // Pages khusus untuk admin
     pages = [
-      const DashboardScreen(),
+      const AdminDashboardScreen(),
       const AdminPromoManagementScreen(), // Screen baru untuk admin promo
       const SettingsScreen(),
       const RiwayatScreen(),

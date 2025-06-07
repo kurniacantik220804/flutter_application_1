@@ -1,22 +1,18 @@
+import 'package:flutter/foundation.dart'; // Untuk kDebugMode
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_application_1/database/produk_service.dart';
 
 class DetailLayanan extends StatefulWidget {
-  final String title;
-  final String harga;
-  final IconData icon;
-  final String deskripsi;
+  final String idProduk; // Bisa berupa ID (angka) atau id_produk (string)
 
   const DetailLayanan({
     super.key,
-    required this.title,
-    required this.harga,
-    required this.icon,
-    required this.deskripsi,
+    required this.idProduk,
   });
 
   @override
@@ -25,51 +21,214 @@ class DetailLayanan extends StatefulWidget {
 
 class _DetailLayananState extends State<DetailLayanan> {
   final ThemeController _themeController = Get.find<ThemeController>();
+  Map<String, dynamic>? produkData;
+  bool isLoading = true;
+  String? errorMessage;
 
-  String _getServiceImage() {
-    String serviceName = widget.title.toLowerCase();
+  @override
+  void initState() {
+    super.initState();
+    _loadProdukData();
+  }
 
-    if (serviceName.contains('tata rias') || serviceName.contains('makeup')) {
-      return 'assets/makeup.jpg';
-    } else if (serviceName.contains('potong') &&
-        serviceName.contains('rambut')) {
-      return 'assets/potong.jpg';
-    } else if (serviceName.contains('perawatan') &&
-        serviceName.contains('rambut')) {
-      return 'assets/rambut.jpg';
-    } else if (serviceName.contains('perawatan') &&
-        serviceName.contains('wajah')) {
-      return 'assets/wajah.jpg';
-    } else if (serviceName.contains('wajah') ||
-        serviceName.contains('facial')) {
-      return 'assets/wajah.jpg';
-    } else if (serviceName.contains('rambut')) {
-      return 'assets/rambut.jpg';
+  Future<void> _loadProdukData() async {
+    try {
+      print('=== DEBUG DETAIL LAYANAN ===');
+      print('Loading produk dengan ID: ${widget.idProduk}');
+      print('Tipe ID: ${widget.idProduk.runtimeType}');
+      
+      // Test koneksi database dulu
+      bool dbConnected = await ProdukService.testDatabaseConnection();
+      print('Koneksi database: $dbConnected');
+      
+      if (!dbConnected) {
+        throw Exception('Tidak dapat terhubung ke database');
+      }
+      
+      // Debug struktur database
+      await ProdukService.debugDatabaseStructure();
+      
+      // Ambil data produk
+      final data = await ProdukService.getProdukById(widget.idProduk);
+      
+      print('Data produk berhasil diambil: $data');
+      
+      if (data != null) {
+        setState(() {
+          produkData = data;
+          isLoading = false;
+          errorMessage = null;
+        });
+        print('State berhasil diupdate dengan data produk');
+      } else {
+        throw Exception('Data produk null atau tidak ditemukan');
+      }
+      
+    } catch (e) {
+      print('Error dalam _loadProdukData: $e');
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
+      
+      // Tampilkan error ke user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat data layanan: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
     }
-    return '';
   }
 
   Widget _buildIconFallback(dynamic colors) {
+    IconData icon = produkData != null 
+        ? ProdukService.getIconFromString(produkData!['icon_name'])
+        : Icons.local_offer;
+        
     return AnimatedThemedContainer(
       padding: const EdgeInsets.all(20),
       withGradient: true,
       child: Icon(
-        widget.icon,
+        icon,
         size: 80,
         color: Colors.white,
       ),
     );
   }
 
+  Widget _buildRetryButton() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.refresh,
+          size: 64,
+          color: Colors.grey,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Gagal memuat data layanan',
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        if (errorMessage != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.all(12),
+            margin: EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red.withOpacity(0.3)),
+            ),
+            child: Text(
+              errorMessage!,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.red[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Text(
+          'ID Layanan: ${widget.idProduk}',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[500],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  isLoading = true;
+                  errorMessage = null;
+                });
+                _loadProdukData();
+              },
+              icon: Icon(Icons.refresh),
+              label: Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            SizedBox(width: 16),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.arrow_back),
+              label: Text('Kembali'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return ThemedScaffold(
+        appBar: ThemedAppBar(title: 'Memuat Data...'),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Sedang memuat data layanan...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'ID: ${widget.idProduk}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (produkData == null || errorMessage != null) {
+      return ThemedScaffold(
+        appBar: ThemedAppBar(title: 'Error'),
+        body: Center(child: _buildRetryButton()),
+      );
+    }
+
     return GetBuilder<ThemeController>(
       builder: (themeController) {
         final colors = themeController.getThemeColors();
-        String imagePath = _getServiceImage();
+        String imagePath = produkData!['image_path'] ?? '';
 
         return ThemedScaffold(
-          appBar: ThemedAppBar(title: widget.title),
+          appBar: ThemedAppBar(
+            title: produkData!['nama_produk'] ?? 'Detail Layanan',
+          ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -97,6 +256,7 @@ class _DetailLayananState extends State<DetailLayanan> {
                               imagePath,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
+                                print('Error memuat gambar: $error');
                                 return _buildIconFallback(colors);
                               },
                             )
@@ -106,13 +266,13 @@ class _DetailLayananState extends State<DetailLayanan> {
                 ),
                 const SizedBox(height: 24),
 
-                // Title and Description Section - Combined
+                // Title and Description Section
                 ThemedCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.title,
+                        produkData!['nama_produk'] ?? 'Nama Layanan Tidak Tersedia',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -120,10 +280,31 @@ class _DetailLayananState extends State<DetailLayanan> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        widget.deskripsi.isNotEmpty
-                            ? widget.deskripsi
-                            : 'Layanan ${widget.title} kami menawarkan pengalaman terbaik dengan staff profesional dan produk berkualitas tinggi.',
+                        ProdukService.getDefaultDescription(
+                          produkData!['nama_produk'] ?? '',
+                          produkData!['deskripsi'],
+                        ),
                         style: const TextStyle(fontSize: 16, height: 1.5),
+                      ),
+                      const SizedBox(height: 16),
+                      // Harga
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          ProdukService.formatHarga(produkData!['harga']),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: colors.primary,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -144,13 +325,45 @@ class _DetailLayananState extends State<DetailLayanan> {
                       ),
                       const SizedBox(height: 16),
                       BookingForm(
-                        title: widget.title,
-                        price: widget.harga,
-                        icon: widget.icon.codePoint,
+                        idProduk: produkData!['id_produk']?.toString() ?? widget.idProduk,
+                        produkData: produkData!,
                       ),
                     ],
                   ),
                 ),
+                
+                // Debug Information (hanya untuk development)
+                if (kDebugMode) ...[
+                  const SizedBox(height: 16),
+                  ThemedCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Debug Info:',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'ID Input: ${widget.idProduk}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        Text(
+                          'ID Produk: ${produkData!['id_produk']}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        Text(
+                          'Data Keys: ${produkData!.keys.join(', ')}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -161,15 +374,13 @@ class _DetailLayananState extends State<DetailLayanan> {
 }
 
 class BookingForm extends StatefulWidget {
-  final String title;
-  final String price;
-  final int icon;
+  final String idProduk;
+  final Map<String, dynamic> produkData;
 
   const BookingForm({
     super.key,
-    required this.title,
-    required this.price,
-    required this.icon,
+    required this.idProduk,
+    required this.produkData,
   });
 
   @override
@@ -201,14 +412,17 @@ class _BookingFormState extends State<BookingForm> {
     setState(() => isLoadingPromos = true);
 
     try {
-      String serviceKey = _getServiceKey();
+      print('Mencari promo untuk ID produk: ${widget.idProduk}');
+      
       final response = await Supabase.instance.client
           .from('promo')
           .select()
-          .eq('id_produk', serviceKey)
+          .eq('id_produk', widget.idProduk)
           .eq('status', 'aktif')
           .gte('tanggal_berakhir',
               DateTime.now().toIso8601String().split('T')[0]);
+
+      print('Response promo: $response');
 
       List<Map<String, dynamic>> promos = [];
       for (var promo in response) {
@@ -228,33 +442,19 @@ class _BookingFormState extends State<BookingForm> {
         }
       }
 
+      print('Promo tersedia: ${promos.length}');
+
       setState(() {
         availablePromos = promos;
         isLoadingPromos = false;
       });
     } catch (e) {
+      print('Error memuat promo: $e');
       setState(() {
         availablePromos = [];
         isLoadingPromos = false;
       });
     }
-  }
-
-  String _getServiceKey() {
-    String serviceName = widget.title.toLowerCase();
-    if (serviceName.contains('potong') && serviceName.contains('rambut')) {
-      return 'Potong Rambut';
-    } else if (serviceName.contains('perawatan') &&
-        serviceName.contains('rambut')) {
-      return 'Perawatan_Rambut';
-    } else if (serviceName.contains('wajah') ||
-        serviceName.contains('facial')) {
-      return 'Perawatan Wajah';
-    } else if (serviceName.contains('makeup') ||
-        serviceName.contains('tata rias')) {
-      return 'Tata_Rias';
-    }
-    return widget.title;
   }
 
   Future<bool> _isPromoAlreadyClaimed(String promoTitle) async {
@@ -270,30 +470,52 @@ class _BookingFormState extends State<BookingForm> {
 
       return response.isNotEmpty;
     } catch (e) {
+      print('Error cek promo claimed: $e');
       return false;
     }
   }
 
   void _calculatePrice() {
-    String priceStr = widget.price.replaceAll(RegExp(r'[^\d]'), '');
-    originalPrice = double.tryParse(priceStr) ?? 0;
+    // Pastikan harga adalah number
+    dynamic hargaRaw = widget.produkData['harga'];
+    if (hargaRaw != null) {
+      if (hargaRaw is int) {
+        originalPrice = hargaRaw.toDouble();
+      } else if (hargaRaw is double) {
+        originalPrice = hargaRaw;
+      } else {
+        try {
+          originalPrice = double.parse(hargaRaw.toString());
+        } catch (e) {
+          print('Error parsing harga: $e');
+          originalPrice = 0;
+        }
+      }
+    } else {
+      originalPrice = 0;
+    }
+    
     finalPrice = originalPrice;
     discountAmount = 0;
 
-    if (selectedPromo != null) {
-      Map<String, dynamic>? promo = availablePromos.firstWhere(
-        (p) => p['name'] == selectedPromo,
-        orElse: () => {},
-      );
+    if (selectedPromo != null && availablePromos.isNotEmpty) {
+      try {
+        Map<String, dynamic>? promo = availablePromos.firstWhere(
+          (p) => p['name'] == selectedPromo,
+          orElse: () => {},
+        );
 
-      if (promo.isNotEmpty) {
-        if (promo['type'] == 'percentage') {
-          discountAmount = originalPrice * (promo['value'] / 100);
-          finalPrice = originalPrice - discountAmount;
-        } else if (promo['type'] == 'free_service') {
-          discountAmount = promo['value'].toDouble();
-          finalPrice = originalPrice;
+        if (promo.isNotEmpty) {
+          if (promo['type'] == 'percentage') {
+            discountAmount = originalPrice * (promo['value'] / 100);
+            finalPrice = originalPrice - discountAmount;
+          } else if (promo['type'] == 'free_service') {
+            discountAmount = promo['value'].toDouble();
+            finalPrice = originalPrice;
+          }
         }
+      } catch (e) {
+        print('Error menghitung diskon: $e');
       }
     }
     setState(() {});
@@ -358,12 +580,15 @@ class _BookingFormState extends State<BookingForm> {
       setState(() => isLoading = true);
 
       try {
+        // Claim promo jika ada
         if (selectedPromo != null) {
           await _claimPromo(selectedPromo!);
         }
 
+        // Buat data booking
         final booking = {
-          'title': widget.title,
+          'id_produk': widget.idProduk,
+          'title': widget.produkData['nama_produk'] ?? 'Layanan',
           'price': _formatPrice(finalPrice),
           'discount_amount':
               discountAmount > 0 ? _formatPrice(discountAmount) : null,
@@ -373,10 +598,11 @@ class _BookingFormState extends State<BookingForm> {
           'time':
               '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
           'payment': 'Cash',
-          'icon': widget.icon,
+          'icon': ProdukService.getIconFromString(widget.produkData['icon_name']).codePoint,
           'booking_timestamp': DateTime.now().millisecondsSinceEpoch,
         };
 
+        // Simpan ke storage
         final box = GetStorage();
         List<dynamic> bookings = box.read('bookings') ?? [];
         bookings.add(booking);
@@ -385,25 +611,30 @@ class _BookingFormState extends State<BookingForm> {
         await Future.delayed(const Duration(seconds: 1));
         setState(() => isLoading = false);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(selectedPromo != null
-                ? 'Booking berhasil dengan promo $selectedPromo!'
-                : 'Booking berhasil ditambahkan!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(selectedPromo != null
+                  ? 'Booking berhasil dengan promo $selectedPromo!'
+                  : 'Booking berhasil ditambahkan!'),
+              backgroundColor: Colors.green,
+            ),
+          );
 
-        Get.forceAppUpdate();
-        Navigator.pop(context);
+          Get.forceAppUpdate();
+          Navigator.pop(context);
+        }
       } catch (e) {
+        print('Error submit booking: $e');
         setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal membuat booking: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -489,7 +720,15 @@ class _BookingFormState extends State<BookingForm> {
 
               // Promo Selection
               if (isLoadingPromos)
-                const Center(child: CircularProgressIndicator())
+                Center(
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 8),
+                      Text('Mencari promo tersedia...'),
+                    ],
+                  ),
+                )
               else if (availablePromos.isNotEmpty) ...[
                 Container(
                   padding:

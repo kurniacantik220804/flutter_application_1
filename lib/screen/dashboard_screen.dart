@@ -8,6 +8,7 @@ import 'riwayat_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
 import 'package:flutter_application_1/database/service_supabase.dart';
+import 'package:flutter_application_1/database/produk_service.dart'; // Import produk_service
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,6 +22,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<bool>? _upcomingBookingsFuture;
   late ThemeController _themeController;
   String _userName = 'Pelanggan';
+  List<Map<String, dynamic>> _layananList = []; // List layanan dari database
+  bool _isLoadingLayanan = true;
 
   // Inisialisasi dengan nilai default untuk menghindari null
   ThemeColors _cachedColors = const ThemeColors(
@@ -40,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     _initializeController();
     _upcomingBookingsFuture = _checkForUpcomingBookings();
     _loadUserName();
+    _loadLayananData(); // Load data layanan dari database
   }
 
   void _initializeController() {
@@ -64,6 +68,45 @@ class _DashboardScreenState extends State<DashboardScreen>
     } catch (e) {
       print('Error updating cached theme: $e');
       // Gunakan default colors jika ada error
+    }
+  }
+
+  // Load data layanan dari database
+  Future<void> _loadLayananData() async {
+    try {
+      final layananData = await ProdukService.getAllProduk();
+      if (mounted) {
+        setState(() {
+          _layananList = layananData;
+          _isLoadingLayanan = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading layanan data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingLayanan = false;
+          // Fallback ke data default jika ada error
+          _layananList = [
+            {
+              'id': '1',
+              'nama_produk': 'Potong Rambut',
+              'harga': 25000,
+              'icon_name': 'cut',
+              'image_path': '',
+              'deskripsi': 'Layanan potong rambut profesional'
+            },
+            {
+              'id': '2',
+              'nama_produk': 'Perawatan Wajah',
+              'harga': 40000,
+              'icon_name': 'spa',
+              'image_path': '',
+              'deskripsi': 'Perawatan wajah untuk kulit sehat'
+            },
+          ];
+        });
+      }
     }
   }
 
@@ -161,7 +204,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       ),
       child: SafeArea(
         child: CustomScrollView(
-          // Ganti SingleChildScrollView dengan CustomScrollView
           slivers: [
             SliverPadding(
               padding: const EdgeInsets.all(16),
@@ -184,44 +226,35 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
 
-            // GridView sebagai Sliver untuk scroll yang lebih smooth
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.85,
-                ),
-                delegate: SliverChildListDelegate([
-                  OptimizedLayananCard(
-                    icon: Icons.cut,
-                    title: 'Potong Rambut',
-                    harga: 'Rp 25.000',
-                    colors: _cachedColors,
+            // Loading indicator atau GridView layanan
+            _isLoadingLayanan 
+                ? const SliverFillRemaining(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final layanan = _layananList[index];
+                          return OptimizedLayananCard(
+                            idProduk: layanan['id'].toString(),
+                            icon: ProdukService.getIconFromString(layanan['icon_name']),
+                            title: layanan['nama_produk'],
+                            harga: ProdukService.formatHarga(layanan['harga']),
+                            colors: _cachedColors,
+                          );
+                        },
+                        childCount: _layananList.length,
+                      ),
+                    ),
                   ),
-                  OptimizedLayananCard(
-                    icon: Icons.spa,
-                    title: 'Perawatan Wajah',
-                    harga: 'Rp 40.000',
-                    colors: _cachedColors,
-                  ),
-                  OptimizedLayananCard(
-                    icon: Icons.brush,
-                    title: 'Tata Rias',
-                    harga: 'Rp 70.000',
-                    colors: _cachedColors,
-                  ),
-                  OptimizedLayananCard(
-                    icon: Icons.local_florist,
-                    title: 'Perawatan Rambut',
-                    harga: 'Rp 30.000',
-                    colors: _cachedColors,
-                  ),
-                ]),
-              ),
-            ),
 
             // Tambah spacing di bawah
             const SliverPadding(
@@ -329,13 +362,13 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   void dispose() {
-    // Cleanup jika diperlukan
     super.dispose();
   }
 }
 
-// OptimizedLayananCard tetap sama tapi dengan null check
+// OptimizedLayananCard yang sudah diperbaiki
 class OptimizedLayananCard extends StatelessWidget {
+  final String idProduk; // Ubah ke idProduk
   final IconData icon;
   final String title;
   final String harga;
@@ -343,6 +376,7 @@ class OptimizedLayananCard extends StatelessWidget {
 
   const OptimizedLayananCard({
     super.key,
+    required this.idProduk, // Parameter idProduk
     required this.icon,
     required this.title,
     required this.harga,
@@ -362,10 +396,7 @@ class OptimizedLayananCard extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => DetailLayanan(
-                  title: title,
-                  harga: harga,
-                  icon: icon,
-                  deskripsi: _getLayananDeskripsi(title),
+                  idProduk: idProduk, // Kirim idProduk ke DetailLayanan
                 ),
               ),
             );
@@ -415,21 +446,5 @@ class OptimizedLayananCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _getLayananDeskripsi(String title) {
-    const deskripsiMap = {
-      'Potong Rambut':
-          'Layanan potong rambut profesional sesuai dengan model yang diinginkan. Termasuk penataan rambut dan cuci rambut.',
-      'Perawatan Wajah':
-          'Perawatan wajah yang membantu membersihkan, melembapkan, dan menyegarkan kulit wajah Anda.',
-      'Tata Rias':
-          'Layanan rias wajah untuk berbagai acara formal maupun kasual dengan produk berkualitas tinggi.',
-      'Perawatan Rambut':
-          'Perawatan rambut intensif dengan krim nutrisi untuk menjaga kesehatan dan kilau rambut Anda.',
-    };
-
-    return deskripsiMap[title] ??
-        'Layanan perawatan kecantikan dan kesehatan oleh tim profesional kami.';
   }
 }
