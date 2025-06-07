@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screen/main_screen.dart';
+import 'package:flutter_application_1/screen/admin_main_screen.dart'; // Import AdminMainScreen
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_screen.dart';
@@ -74,11 +75,16 @@ class _login2screenState extends State<login2screen> {
         _showAdminWelcomeDialog();
       }
 
-      // Navigate to MainScreen after delay
+      // Navigate based on user role
       await Future.delayed(const Duration(milliseconds: 1000));
 
       if (mounted) {
-        Get.offAll(() => const MainScreen());
+        // Navigate to different screens based on role
+        if (result.userRole == 'admin') {
+          Get.offAll(() => const AdminMainScreen()); // Navigate to AdminMainScreen
+        } else {
+          Get.offAll(() => const MainScreen()); // Navigate to regular MainScreen
+        }
       }
     }
   }
@@ -103,6 +109,8 @@ class _login2screenState extends State<login2screen> {
               SizedBox(height: 8),
               Text('Akses yang tersedia:'),
               SizedBox(height: 4),
+              Text('• Dashboard Admin'),
+              Text('• Kelola Promo'),
               Text('• Manajemen pengguna'),
               Text('• Kontrol sistem'),
               Text('• Laporan dan analitik'),
@@ -222,6 +230,17 @@ class _login2screenState extends State<login2screen> {
                   _buildRoleIndicator('👤 USER', Colors.blue),
                   _buildRoleIndicator('🔑 ADMIN', Colors.red),
                 ],
+              ),
+              const SizedBox(height: 8),
+              // Navigation info
+              const Text(
+                "Admin akan diarahkan ke Dashboard Khusus",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),

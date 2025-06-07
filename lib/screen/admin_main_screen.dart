@@ -7,24 +7,20 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'dashboard_screen.dart';
-import 'detail_layanan.dart';
+import 'package:flutter_application_1/screen/promo/admin_promo_management_screen.dart';
 import 'riwayat_screen.dart';
-import 'package:flutter_application_1/screen/promo/promo_screen.dart';
-import 'beauty_tips_screen.dart'; // Import beauty tips screen
 import 'settings_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
-import 'package:flutter_application_1/theme/theme_settings_screen.dart';
-import 'package:flutter_application_1/login/login_2_screen.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class AdminMainScreen extends StatefulWidget {
+  const AdminMainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<AdminMainScreen> createState() => _AdminMainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
+class _AdminMainScreenState extends State<AdminMainScreen> with TickerProviderStateMixin {
   final autoSizeGroup = AutoSizeGroup();
   var _bottomNavIndex = 0;
 
@@ -36,14 +32,15 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   late CurvedAnimation borderRadiusCurve;
   late AnimationController _hideBottomBarAnimationController;
 
+  // Icon dan title khusus untuk admin
   static const iconList = <IconData>[
     Icons.dashboard_rounded,
-    Icons.discount_rounded,
+    Icons.admin_panel_settings_rounded, // Ubah dari discount ke admin panel
     Icons.settings_rounded,
     Icons.history_rounded,
   ];
 
-  static const titleList = ["Beranda", "Promo", "Pengaturan", "Riwayat"];
+  static const titleList = ["Dashboard", "Kelola Promo", "Pengaturan", "Riwayat"];
 
   late final List<Widget> pages;
 
@@ -51,9 +48,10 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
+    // Pages khusus untuk admin
     pages = [
       const DashboardScreen(),
-      const PromoScreen(),
+      const AdminPromoManagementScreen(), // Screen baru untuk admin promo
       const SettingsScreen(),
       const RiwayatScreen(),
     ];
@@ -137,20 +135,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
         return ThemedScaffold(
           extendBody: true,
-          withBackground: false, // Karena kita akan set background per page
+          withBackground: false,
           body: NotificationListener<ScrollNotification>(
             onNotification: onScrollNotification,
             child: IndexedStack(index: _bottomNavIndex, children: pages),
           ),
           floatingActionButton: ThemedFloatingActionButton(
-            icon: Icons
-                .lightbulb_outline, // Changed from spa to lightbulb for beauty tips
+            icon: Icons.add_business_rounded, // Icon khusus admin
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const BeautyTipsScreen()),
-              );
+              // Quick add promo atau quick action lainnya
+              _showQuickActions();
             },
           ),
           floatingActionButtonLocation:
@@ -197,6 +191,71 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+
+  void _showQuickActions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Quick Actions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.add_circle, color: Colors.green),
+              title: const Text('Tambah Promo Baru'),
+              subtitle: const Text('Buat promo baru untuk pelanggan'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate ke form tambah promo
+                setState(() => _bottomNavIndex = 1); // Pindah ke tab Kelola Promo
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.analytics, color: Colors.blue),
+              title: const Text('Lihat Statistik'),
+              subtitle: const Text('Analisis performa promo'),
+              onTap: () {
+                Navigator.pop(context);
+                // Show statistik
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notification_add, color: Colors.orange),
+              title: const Text('Kirim Notifikasi'),
+              subtitle: const Text('Notifikasi promo ke semua user'),
+              onTap: () {
+                Navigator.pop(context);
+                // Show form notifikasi
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 }

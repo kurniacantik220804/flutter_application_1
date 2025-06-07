@@ -3,7 +3,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 import 'detail_layanan.dart';
-import 'promo_screen.dart';
+import 'promo/promo_screen.dart';
 import 'riwayat_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
