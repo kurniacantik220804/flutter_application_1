@@ -31,7 +31,7 @@ class _PromoScreenState extends State<PromoScreen> {
       return Scaffold(
         backgroundColor: colors.background,
         appBar: AppBar(
-          title: const Text('Promo Spesial'),
+          title: const Text('Promo'),
           backgroundColor: colors.primary,
           foregroundColor: Colors.white,
           flexibleSpace: Container(
@@ -49,21 +49,6 @@ class _PromoScreenState extends State<PromoScreen> {
               icon: const Icon(Icons.refresh),
               onPressed: () => promoService.loadPromos(),
             ),
-            // Menu dengan opsi tambahan
-            PopupMenuButton(
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  child: const Row(
-                    children: [
-                      Icon(Icons.info_outline, size: 20),
-                      SizedBox(width: 8),
-                      Text('Info Promo'),
-                    ],
-                  ),
-                  onTap: () => _showPromoInfo(),
-                ),
-              ],
-            ),
           ],
         ),
         body: Container(
@@ -78,10 +63,6 @@ class _PromoScreenState extends State<PromoScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
-                  _buildHeader(colors),
-                  const SizedBox(height: 24),
-
                   // Loading indicator
                   if (promoService.isLoading.value)
                     const Center(
@@ -124,64 +105,6 @@ class _PromoScreenState extends State<PromoScreen> {
         ),
       );
     });
-  }
-
-  Widget _buildHeader(dynamic colors) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.card_giftcard,
-              color: colors.primary,
-              size: 28,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Promo Spesial Salon Cantik',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: colors.primary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Dapatkan penawaran terbaik untuk perawatan kecantikan Anda',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.orange.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.info_outline, size: 16, color: Colors.orange[700]),
-              const SizedBox(width: 4),
-              Text(
-                'Setiap promo hanya dapat diklaim sekali',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.orange[700],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildSectionHeader(String title, Color color, IconData icon) {
@@ -440,60 +363,6 @@ class _PromoScreenState extends State<PromoScreen> {
               color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPromoInfo() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Informasi Promo'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildInfoItem(Icons.check_circle,
-                  'Setiap promo hanya dapat diklaim sekali'),
-              _buildInfoItem(
-                  Icons.schedule, 'Promo memiliki masa berlaku tertentu'),
-              _buildInfoItem(Icons.person, 'Harus login untuk mengklaim promo'),
-              _buildInfoItem(Icons.refresh,
-                  'Tarik ke bawah untuk memperbarui daftar promo'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Tutup'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildInfoItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-            ),
           ),
         ],
       ),
