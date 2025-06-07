@@ -223,16 +223,6 @@ class _AddPromoFormState extends State<AddPromoForm> {
                 readOnly: _hargaAsliController.text.isNotEmpty && _hargaPromoController.text.isNotEmpty,
               ),
               const SizedBox(height: 16),
-
-              // Promo Code
-              _buildTextField(
-                controller: _promoCodeController,
-                label: 'Kode Promo (Opsional)',
-                icon: Icons.code,
-                hint: 'Contoh: DISKON50',
-              ),
-              const SizedBox(height: 16),
-
               // Tanggal
               Row(
                 children: [
@@ -254,62 +244,6 @@ class _AddPromoFormState extends State<AddPromoForm> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // Usage & Purchase
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _maxUsageController,
-                      label: 'Maksimal Penggunaan',
-                      icon: Icons.people,
-                      keyboardType: TextInputType.number,
-                      hint: 'Kosongkan jika unlimited',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _minPurchaseController,
-                      label: 'Minimal Pembelian',
-                      icon: Icons.shopping_cart,
-                      keyboardType: TextInputType.number,
-                      hint: '0',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Priority
-              _buildTextField(
-                controller: _priorityController,
-                label: 'Prioritas (0-100)',
-                icon: Icons.priority_high,
-                keyboardType: TextInputType.number,
-                hint: '0 = prioritas rendah, 100 = prioritas tinggi',
-              ),
-              const SizedBox(height: 16),
-
-              // Banner URL
-              _buildTextField(
-                controller: _bannerUrlController,
-                label: 'URL Banner (Opsional)',
-                icon: Icons.image,
-                hint: 'https://example.com/banner.jpg',
-              ),
-              const SizedBox(height: 16),
-
-              // Terms & Conditions
-              _buildTextField(
-                controller: _termsConditionsController,
-                label: 'Syarat & Ketentuan',
-                icon: Icons.rule,
-                maxLines: 3,
-                hint: 'Masukkan syarat dan ketentuan promo',
-              ),
-              const SizedBox(height: 32),
-
               // Submit Button
               SizedBox(
                 width: double.infinity,

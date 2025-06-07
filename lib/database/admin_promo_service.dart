@@ -37,15 +37,10 @@ class AdminPromoService extends GetxController {
     {'value': 'Perawatan Wajah', 'label': 'Perawatan Wajah'},
     {'value': 'Tata_Rias', 'label': 'Tata Rias'},
     {'value': 'Perawatan_Rambut', 'label': 'Perawatan Rambut'},
-    {'value': 'Manicure_Pedicure', 'label': 'Manicure & Pedicure'},
-    {'value': 'Spa_Treatment', 'label': 'Spa Treatment'},
   ];
 
   final List<Map<String, String>> promoTypes = [
     {'value': 'discount', 'label': 'Diskon Persentase'},
-    {'value': 'cashback', 'label': 'Cashback'},
-    {'value': 'free_shipping', 'label': 'Gratis Ongkir'},
-    {'value': 'buy_one_get_one', 'label': 'Beli 1 Gratis 1'},
   ];
 
   @override
