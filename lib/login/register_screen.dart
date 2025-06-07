@@ -16,12 +16,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool confirmPasswordVisible = false;
   bool isLoading = false;
   String selectedRole = 'user'; // Default role adalah user
+  
+  // Admin validation password - ganti sesuai kebutuhan
+  final String adminValidationPassword = "admin123";
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController adminCodeController = TextEditingController();
 
   void togglePasswordVisibility() {
     setState(() {
@@ -43,6 +46,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         confirmPasswordController.text.trim().isEmpty) {
       _showSnackBar('Semua kolom harus diisi', Colors.red);
       return;
+    }
+
+    // Validasi khusus admin
+    if (selectedRole == 'admin') {
+      if (adminCodeController.text.trim().isEmpty) {
+        _showSnackBar('Kode admin harus diisi', Colors.red);
+        return;
+      }
+      if (adminCodeController.text.trim() != adminValidationPassword) {
+        _showSnackBar('Kode admin tidak valid', Colors.red);
+        return;
+      }
     }
 
     if (nameController.text.trim().length < 2) {
@@ -129,6 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           emailController.clear();
           passwordController.clear();
           confirmPasswordController.clear();
+          adminCodeController.clear();
           setState(() {
             selectedRole = 'user'; // Reset role ke default
           });
@@ -159,6 +175,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             emailController.clear();
             passwordController.clear();
             confirmPasswordController.clear();
+            adminCodeController.clear();
 
             await Future.delayed(const Duration(milliseconds: 1500));
             if (mounted) Navigator.pop(context);
@@ -230,6 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     emailController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
+    adminCodeController.dispose();
     super.dispose();
   }
 
@@ -308,42 +326,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Info untuk user dengan debug info
+                      // Info untuk user dengan role yang dipilih
                       Container(
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.green[50],
+                          color: selectedRole == 'admin' ? Colors.red[50] : Colors.blue[50],
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green[200]!),
+                          border: Border.all(
+                            color: selectedRole == 'admin' ? Colors.red[200]! : Colors.blue[200]!
+                          ),
                         ),
-                        child: Column(
+                        child: Row(
                           children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.info_outline,
-                                    color: Colors.green, size: 16),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    "Email tidak perlu verifikasi, langsung bisa login setelah daftar",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.green,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            Icon(
+                              selectedRole == 'admin' ? Icons.admin_panel_settings : Icons.person,
+                              color: selectedRole == 'admin' ? Colors.red : Colors.blue,
+                              size: 16
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(width: 8),
                             Text(
-                              "Role yang dipilih: ${selectedRole.toUpperCase()}",
+                              "Mendaftar sebagai: ${selectedRole.toUpperCase()}",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: selectedRole == 'admin'
-                                    ? Colors.red[700]
-                                    : Colors.blue[700],
+                                color: selectedRole == 'admin' ? Colors.red[700] : Colors.blue[700],
                                 fontSize: 12,
                               ),
                             ),
@@ -509,6 +515,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                         ),
                       ),
+
+                      // Admin Code Field - Only show when admin is selected
+                      if (selectedRole == 'admin') ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red[200]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber, color: Colors.red[700], size: 16),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  "Diperlukan kode admin untuk mendaftar sebagai administrator",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextField(
+                          controller: adminCodeController,
+                          enabled: !isLoading,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: "Kode Admin",
+                            hintText: "Masukkan kode admin",
+                            prefixIcon: const Icon(Icons.security, color: Colors.red),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.red, width: 2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Username field (mengganti nama lengkap)
                       TextField(
