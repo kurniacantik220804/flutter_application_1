@@ -4,7 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter_application_1/database/auth_service.dart';
-import 'package:flutter_application_1/screen/promo/promo_screen.dart';
+import 'package:flutter_application_1/screen/promo_screen.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
@@ -17,7 +17,7 @@ import 'screen/main_screen.dart';
 import 'package:flutter_application_1/database/service_supabase.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
-import 'screen/promo/admin_promo_screen.dart';
+import 'screen/admin/admin_promo_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

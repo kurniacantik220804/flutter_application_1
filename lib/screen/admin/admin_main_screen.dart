@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:flutter_application_1/screen/admin_dashboard_screen.dart';
+import 'admin_dashboard_screen.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'dashboard_screen.dart';
-import 'package:flutter_application_1/screen/promo/admin_promo_management_screen.dart';
-import 'riwayat_screen.dart';
-import 'settings_screen.dart';
+import 'admin_promo_management_screen.dart';
+import 'package:flutter_application_1/screen/riwayat_screen.dart';
+import 'package:flutter_application_1/screen/settings_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
 
@@ -21,7 +20,8 @@ class AdminMainScreen extends StatefulWidget {
   State<AdminMainScreen> createState() => _AdminMainScreenState();
 }
 
-class _AdminMainScreenState extends State<AdminMainScreen> with TickerProviderStateMixin {
+class _AdminMainScreenState extends State<AdminMainScreen>
+    with TickerProviderStateMixin {
   final autoSizeGroup = AutoSizeGroup();
   var _bottomNavIndex = 0;
 
@@ -41,7 +41,12 @@ class _AdminMainScreenState extends State<AdminMainScreen> with TickerProviderSt
     Icons.history_rounded,
   ];
 
-  static const titleList = ["Dashboard", "Kelola Promo", "Pengaturan", "Riwayat"];
+  static const titleList = [
+    "Dashboard",
+    "Kelola Promo",
+    "Pengaturan",
+    "Riwayat"
+  ];
 
   late final List<Widget> pages;
 
@@ -232,7 +237,8 @@ class _AdminMainScreenState extends State<AdminMainScreen> with TickerProviderSt
               onTap: () {
                 Navigator.pop(context);
                 // Navigate ke form tambah promo
-                setState(() => _bottomNavIndex = 1); // Pindah ke tab Kelola Promo
+                setState(
+                    () => _bottomNavIndex = 1); // Pindah ke tab Kelola Promo
               },
             ),
             ListTile(

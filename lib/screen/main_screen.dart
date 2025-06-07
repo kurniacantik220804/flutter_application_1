@@ -9,7 +9,7 @@ import 'package:get_storage/get_storage.dart';
 import 'dashboard_screen.dart';
 import 'detail_layanan.dart';
 import 'riwayat_screen.dart';
-import 'package:flutter_application_1/screen/promo/promo_screen.dart';
+import 'package:flutter_application_1/screen/promo_screen.dart';
 import 'beauty_tips_screen.dart'; // Import beauty tips screen
 import 'settings_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';

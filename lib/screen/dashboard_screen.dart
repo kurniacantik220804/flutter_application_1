@@ -3,7 +3,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 import 'detail_layanan.dart';
-import 'promo/promo_screen.dart';
+import 'promo_screen.dart';
 import 'riwayat_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
@@ -227,14 +227,15 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
 
             // Loading indicator atau GridView layanan
-            _isLoadingLayanan 
+            _isLoadingLayanan
                 ? const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator()),
                   )
                 : SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
@@ -245,7 +246,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           final layanan = _layananList[index];
                           return OptimizedLayananCard(
                             idProduk: layanan['id'].toString(),
-                            icon: ProdukService.getIconFromString(layanan['icon_name']),
+                            icon: ProdukService.getIconFromString(
+                                layanan['icon_name']),
                             title: layanan['nama_produk'],
                             harga: ProdukService.formatHarga(layanan['harga']),
                             colors: _cachedColors,

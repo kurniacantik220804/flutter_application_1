@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screen/main_screen.dart';
-import 'package:flutter_application_1/screen/admin_main_screen.dart'; // Import AdminMainScreen
+import 'package:flutter_application_1/screen/admin/admin_main_screen.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_screen.dart';
@@ -81,9 +81,11 @@ class _login2screenState extends State<login2screen> {
       if (mounted) {
         // Navigate to different screens based on role
         if (result.userRole == 'admin') {
-          Get.offAll(() => const AdminMainScreen()); // Navigate to AdminMainScreen
+          Get.offAll(
+              () => const AdminMainScreen()); // Navigate to AdminMainScreen
         } else {
-          Get.offAll(() => const MainScreen()); // Navigate to regular MainScreen
+          Get.offAll(
+              () => const MainScreen()); // Navigate to regular MainScreen
         }
       }
     }
