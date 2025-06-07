@@ -62,16 +62,6 @@ class _PromoScreenState extends State<PromoScreen> {
                   ),
                   onTap: () => _showPromoInfo(),
                 ),
-                PopupMenuItem(
-                  child: const Row(
-                    children: [
-                      Icon(Icons.restore, size: 20),
-                      SizedBox(width: 8),
-                      Text('Reset Promo (Testing)'),
-                    ],
-                  ),
-                  onTap: () => _confirmResetPromos(),
-                ),
               ],
             ),
           ],
@@ -115,51 +105,13 @@ class _PromoScreenState extends State<PromoScreen> {
                                 context,
                                 promo,
                                 colors,
-                                false, // not claimed
                               ))
                           .toList(),
                       const SizedBox(height: 20),
                     ],
 
-                    // Claimed promos (collapsed section)
-                    if (promoService.claimedPromos.isNotEmpty) ...[
-                      ExpansionTile(
-                        leading: Icon(Icons.check_circle, color: Colors.green),
-                        title: Text(
-                          'Promo yang Sudah Diklaim (${promoService.claimedPromos.length})',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Promo yang sudah Anda gunakan (sekali pakai)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                        children: promoService.claimedPromos
-                            .map((promo) => _buildPromoCard(
-                                  context,
-                                  promo,
-                                  colors,
-                                  true, // claimed
-                                ))
-                            .toList(),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-
-                    // Message when all promos are claimed
-                    if (promoService.availablePromos.isEmpty &&
-                        promoService.claimedPromos.isNotEmpty)
-                      _buildAllClaimedMessage(),
-
                     // Message when no promos available
-                    if (promoService.availablePromos.isEmpty &&
-                        promoService.claimedPromos.isEmpty)
+                    if (promoService.availablePromos.isEmpty)
                       _buildNoPromosMessage(),
                   ],
 
@@ -314,24 +266,20 @@ class _PromoScreenState extends State<PromoScreen> {
     BuildContext context,
     Map<String, dynamic> promo,
     dynamic colors,
-    bool isClaimed,
   ) {
-    Color cardColor = _getColorFromString(promo['color'], colors);
     IconData cardIcon = _getIconFromString(promo['icon']);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: isClaimed ? 2 : 4,
+      elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
             colors: [
-              isClaimed ? Colors.grey[100]! : Colors.white,
-              isClaimed
-                  ? Colors.grey[200]!.withOpacity(0.5)
-                  : cardColor.withOpacity(0.05),
+              Colors.white,
+              colors.primary.withOpacity(0.05),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -347,14 +295,12 @@ class _PromoScreenState extends State<PromoScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isClaimed
-                          ? Colors.grey[300]
-                          : cardColor.withOpacity(0.2),
+                      color: colors.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       cardIcon,
-                      color: isClaimed ? Colors.grey[600] : cardColor,
+                      color: colors.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -364,10 +310,9 @@ class _PromoScreenState extends State<PromoScreen> {
                       children: [
                         Text(
                           promo['title'],
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isClaimed ? Colors.grey[600] : null,
                           ),
                         ),
                         Text(
@@ -380,53 +325,21 @@ class _PromoScreenState extends State<PromoScreen> {
                       ],
                     ),
                   ),
-                  if (isClaimed)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Diklaim',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
               const SizedBox(height: 12),
               Text(
                 promo['description'],
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isClaimed ? Colors.grey[600] : null,
-                ),
+                style: const TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (promo['promo_price'] != 'GRATIS' && !isClaimed)
+                        if (promo['promo_price'] != 'GRATIS')
                           Text(
                             '${promo['original_price']}',
                             style: TextStyle(
@@ -439,11 +352,9 @@ class _PromoScreenState extends State<PromoScreen> {
                           promo['promo_price'],
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: isClaimed
-                                ? Colors.grey[600]
-                                : (promo['promo_price'] == 'GRATIS'
-                                    ? Colors.green
-                                    : cardColor),
+                            color: promo['promo_price'] == 'GRATIS'
+                                ? Colors.green
+                                : colors.primary,
                             fontSize: 18,
                           ),
                         ),
@@ -458,7 +369,7 @@ class _PromoScreenState extends State<PromoScreen> {
                             ),
                             child: Text(
                               '${promo['discount_percent']}% OFF',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.red,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -468,93 +379,29 @@ class _PromoScreenState extends State<PromoScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  if (!isClaimed)
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        // Konfirmasi sebelum klaim
-                        final confirm =
-                            await _showClaimConfirmation(promo['title']);
-                        if (confirm == true) {
-                          await promoService.claimPromo(promo['title']);
-                        }
-                      },
-                      icon: const Icon(Icons.redeem, size: 18),
-                      label: const Text('Klaim'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: cardColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      // Langsung klaim tanpa konfirmasi
+                      await promoService.claimPromo(promo['title']);
+                    },
+                    icon: const Icon(Icons.redeem, size: 18),
+                    label: const Text('Klaim'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        'Sudah Diklaim',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                     ),
+                  ),
                 ],
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAllClaimedMessage() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(top: 20),
-      decoration: BoxDecoration(
-        color: Colors.green[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[200]!),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.celebration,
-            color: Colors.green,
-            size: 48,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Semua Promo Telah Diklaim!',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Selamat! Anda telah menggunakan semua promo yang tersedia. Nantikan promo menarik lainnya!',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
@@ -599,82 +446,16 @@ class _PromoScreenState extends State<PromoScreen> {
     );
   }
 
-  Future<bool?> _showClaimConfirmation(String promoTitle) {
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.help_outline, color: Colors.orange),
-              const SizedBox(width: 8),
-              const Text('Konfirmasi Klaim Promo'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Apakah Anda yakin ingin mengklaim promo:'),
-              const SizedBox(height: 8),
-              Text(
-                '"$promoTitle"',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Promo hanya dapat diklaim sekali dan tidak dapat dibatalkan.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange[800],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Ya, Klaim'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showPromoInfo() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.info_outline, color: Colors.blue),
-              const SizedBox(width: 8),
-              const Text('Informasi Promo'),
+              SizedBox(width: 8),
+              Text('Informasi Promo'),
             ],
           ),
           content: Column(
@@ -717,56 +498,6 @@ class _PromoScreenState extends State<PromoScreen> {
         ],
       ),
     );
-  }
-
-  void _confirmResetPromos() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.warning, color: Colors.red),
-              const SizedBox(width: 8),
-              const Text('Konfirmasi Reset'),
-            ],
-          ),
-          content: const Text(
-            'Apakah Anda yakin ingin mereset semua promo yang sudah diklaim? '
-            'Tindakan ini tidak dapat dibatalkan dan hanya untuk keperluan testing.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                promoService.resetUserPromos();
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Reset', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Color _getColorFromString(String colorName, dynamic colors) {
-    switch (colorName.toLowerCase()) {
-      case 'primary':
-        return colors.primary;
-      case 'secondary':
-        return colors.secondary;
-      case 'orange':
-        return Colors.orange;
-      case 'purple':
-        return Colors.purple;
-      default:
-        return colors.primary;
-    }
   }
 
   IconData _getIconFromString(String iconName) {
