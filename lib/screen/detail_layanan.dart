@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart'; // Untuk kDebugMode
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
@@ -8,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_application_1/database/produk_service.dart';
 
 class DetailLayanan extends StatefulWidget {
-  final String idProduk; // Bisa berupa ID (angka) atau id_produk (string)
+  final String idProduk;
 
   const DetailLayanan({
     super.key,
@@ -33,51 +32,34 @@ class _DetailLayananState extends State<DetailLayanan> {
 
   Future<void> _loadProdukData() async {
     try {
-      print('=== DEBUG DETAIL LAYANAN ===');
-      print('Loading produk dengan ID: ${widget.idProduk}');
-      print('Tipe ID: ${widget.idProduk.runtimeType}');
-      
-      // Test koneksi database dulu
       bool dbConnected = await ProdukService.testDatabaseConnection();
-      print('Koneksi database: $dbConnected');
-      
       if (!dbConnected) {
         throw Exception('Tidak dapat terhubung ke database');
       }
-      
-      // Debug struktur database
-      await ProdukService.debugDatabaseStructure();
-      
-      // Ambil data produk
+
       final data = await ProdukService.getProdukById(widget.idProduk);
-      
-      print('Data produk berhasil diambil: $data');
-      
+
       if (data != null) {
         setState(() {
           produkData = data;
           isLoading = false;
           errorMessage = null;
         });
-        print('State berhasil diupdate dengan data produk');
       } else {
-        throw Exception('Data produk null atau tidak ditemukan');
+        throw Exception('Data produk tidak ditemukan');
       }
-      
     } catch (e) {
-      print('Error dalam _loadProdukData: $e');
       setState(() {
         isLoading = false;
         errorMessage = e.toString();
       });
-      
-      // Tampilkan error ke user
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memuat data layanan: ${e.toString()}'),
+            content: Text('Gagal memuat data: ${e.toString()}'),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -85,10 +67,27 @@ class _DetailLayananState extends State<DetailLayanan> {
   }
 
   Widget _buildIconFallback(dynamic colors) {
-    IconData icon = produkData != null 
-        ? ProdukService.getIconFromString(produkData!['icon_name'])
-        : Icons.local_offer;
-        
+    IconData icon = Icons.local_offer;
+
+    // Gunakan icon_name dari database jika tersedia
+    if (produkData != null && produkData!['icon_name'] != null) {
+      icon = ProdukService.getIconFromString(produkData!['icon_name']);
+    } else if (produkData != null) {
+      // Fallback ke logika lama jika icon_name tidak tersedia
+      String namaProduk =
+          (produkData!['nama_produk'] ?? '').toString().toLowerCase();
+      if (namaProduk.contains('potong') || namaProduk.contains('rambut')) {
+        icon = Icons.content_cut;
+      } else if (namaProduk.contains('wajah') || namaProduk.contains('face')) {
+        icon = Icons.face;
+      } else if (namaProduk.contains('rias') || namaProduk.contains('makeup')) {
+        icon = Icons.brush;
+      } else if (namaProduk.contains('perawatan') ||
+          namaProduk.contains('spa')) {
+        icon = Icons.spa;
+      }
+    }
+
     return AnimatedThemedContainer(
       padding: const EdgeInsets.all(20),
       withGradient: true,
@@ -104,11 +103,7 @@ class _DetailLayananState extends State<DetailLayanan> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.refresh,
-          size: 64,
-          color: Colors.grey,
-        ),
+        Icon(Icons.refresh, size: 64, color: Colors.grey),
         const SizedBox(height: 16),
         Text(
           'Gagal memuat data layanan',
@@ -130,22 +125,11 @@ class _DetailLayananState extends State<DetailLayanan> {
             ),
             child: Text(
               errorMessage!,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.red[700],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.red[700]),
               textAlign: TextAlign.center,
             ),
           ),
         ],
-        const SizedBox(height: 8),
-        Text(
-          'ID Layanan: ${widget.idProduk}',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[500],
-          ),
-        ),
         const SizedBox(height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -194,18 +178,7 @@ class _DetailLayananState extends State<DetailLayanan> {
               SizedBox(height: 16),
               Text(
                 'Sedang memuat data layanan...',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'ID: ${widget.idProduk}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -223,7 +196,7 @@ class _DetailLayananState extends State<DetailLayanan> {
     return GetBuilder<ThemeController>(
       builder: (themeController) {
         final colors = themeController.getThemeColors();
-        String imagePath = produkData!['image_path'] ?? '';
+        String imagePath = produkData?['image_path'] ?? '';
 
         return ThemedScaffold(
           appBar: ThemedAppBar(
@@ -234,7 +207,7 @@ class _DetailLayananState extends State<DetailLayanan> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image Section
+                // Image Section - Updated to match admin_detail_layanan.dart
                 Center(
                   child: Container(
                     height: 200,
@@ -256,7 +229,6 @@ class _DetailLayananState extends State<DetailLayanan> {
                               imagePath,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                print('Error memuat gambar: $error');
                                 return _buildIconFallback(colors);
                               },
                             )
@@ -272,7 +244,8 @@ class _DetailLayananState extends State<DetailLayanan> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        produkData!['nama_produk'] ?? 'Nama Layanan Tidak Tersedia',
+                        produkData!['nama_produk'] ??
+                            'Nama Layanan Tidak Tersedia',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -325,45 +298,13 @@ class _DetailLayananState extends State<DetailLayanan> {
                       ),
                       const SizedBox(height: 16),
                       BookingForm(
-                        idProduk: produkData!['id_produk']?.toString() ?? widget.idProduk,
+                        idProduk: produkData!['id_produk']?.toString() ??
+                            widget.idProduk,
                         produkData: produkData!,
                       ),
                     ],
                   ),
                 ),
-                
-                // Debug Information (hanya untuk development)
-                if (kDebugMode) ...[
-                  const SizedBox(height: 16),
-                  ThemedCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Debug Info:',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'ID Input: ${widget.idProduk}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                        Text(
-                          'ID Produk: ${produkData!['id_produk']}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                        Text(
-                          'Data Keys: ${produkData!.keys.join(', ')}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -412,8 +353,6 @@ class _BookingFormState extends State<BookingForm> {
     setState(() => isLoadingPromos = true);
 
     try {
-      print('Mencari promo untuk ID produk: ${widget.idProduk}');
-      
       final response = await Supabase.instance.client
           .from('promo')
           .select()
@@ -421,8 +360,6 @@ class _BookingFormState extends State<BookingForm> {
           .eq('status', 'aktif')
           .gte('tanggal_berakhir',
               DateTime.now().toIso8601String().split('T')[0]);
-
-      print('Response promo: $response');
 
       List<Map<String, dynamic>> promos = [];
       for (var promo in response) {
@@ -442,14 +379,11 @@ class _BookingFormState extends State<BookingForm> {
         }
       }
 
-      print('Promo tersedia: ${promos.length}');
-
       setState(() {
         availablePromos = promos;
         isLoadingPromos = false;
       });
     } catch (e) {
-      print('Error memuat promo: $e');
       setState(() {
         availablePromos = [];
         isLoadingPromos = false;
@@ -470,13 +404,11 @@ class _BookingFormState extends State<BookingForm> {
 
       return response.isNotEmpty;
     } catch (e) {
-      print('Error cek promo claimed: $e');
       return false;
     }
   }
 
   void _calculatePrice() {
-    // Pastikan harga adalah number
     dynamic hargaRaw = widget.produkData['harga'];
     if (hargaRaw != null) {
       if (hargaRaw is int) {
@@ -487,14 +419,13 @@ class _BookingFormState extends State<BookingForm> {
         try {
           originalPrice = double.parse(hargaRaw.toString());
         } catch (e) {
-          print('Error parsing harga: $e');
           originalPrice = 0;
         }
       }
     } else {
       originalPrice = 0;
     }
-    
+
     finalPrice = originalPrice;
     discountAmount = 0;
 
@@ -515,7 +446,7 @@ class _BookingFormState extends State<BookingForm> {
           }
         }
       } catch (e) {
-        print('Error menghitung diskon: $e');
+        // Handle error silently
       }
     }
     setState(() {});
@@ -580,12 +511,32 @@ class _BookingFormState extends State<BookingForm> {
       setState(() => isLoading = true);
 
       try {
-        // Claim promo jika ada
         if (selectedPromo != null) {
           await _claimPromo(selectedPromo!);
         }
 
-        // Buat data booking
+        // Gunakan icon dari database jika tersedia, jika tidak gunakan logika fallback
+        IconData iconData = Icons.local_offer;
+        if (widget.produkData['icon_name'] != null) {
+          iconData =
+              ProdukService.getIconFromString(widget.produkData['icon_name']);
+        } else {
+          String namaProduk =
+              (widget.produkData['nama_produk'] ?? '').toString().toLowerCase();
+          if (namaProduk.contains('potong') || namaProduk.contains('rambut')) {
+            iconData = Icons.content_cut;
+          } else if (namaProduk.contains('wajah') ||
+              namaProduk.contains('face')) {
+            iconData = Icons.face;
+          } else if (namaProduk.contains('rias') ||
+              namaProduk.contains('makeup')) {
+            iconData = Icons.brush;
+          } else if (namaProduk.contains('perawatan') ||
+              namaProduk.contains('spa')) {
+            iconData = Icons.spa;
+          }
+        }
+
         final booking = {
           'id_produk': widget.idProduk,
           'title': widget.produkData['nama_produk'] ?? 'Layanan',
@@ -598,11 +549,10 @@ class _BookingFormState extends State<BookingForm> {
           'time':
               '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
           'payment': 'Cash',
-          'icon': ProdukService.getIconFromString(widget.produkData['icon_name']).codePoint,
+          'icon': iconData.codePoint,
           'booking_timestamp': DateTime.now().millisecondsSinceEpoch,
         };
 
-        // Simpan ke storage
         final box = GetStorage();
         List<dynamic> bookings = box.read('bookings') ?? [];
         bookings.add(booking);
@@ -625,7 +575,6 @@ class _BookingFormState extends State<BookingForm> {
           Navigator.pop(context);
         }
       } catch (e) {
-        print('Error submit booking: $e');
         setState(() => isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -649,7 +598,7 @@ class _BookingFormState extends State<BookingForm> {
         'promo_title': promoTitle,
       });
     } catch (e) {
-      print('Error claiming promo: $e');
+      // Handle error silently
     }
   }
 
