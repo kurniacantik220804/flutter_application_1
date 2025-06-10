@@ -18,7 +18,7 @@ class BookingService {
     }
   }
 
-  // Membuat booking baru dengan promo
+  // Updated createBooking method dengan promo handling yang lebih baik
   static Future<Map<String, dynamic>?> createBooking({
     required String serviceId,
     required String serviceName,
@@ -72,6 +72,11 @@ class BookingService {
         final result = response[0];
 
         if (result['success'] == true) {
+          // PENTING: Tandai promo sebagai used jika ada
+          if (claimedPromoId != null) {
+            await _markPromoAsUsed(claimedPromoId);
+          }
+
           // Simpan ke local storage untuk compatibility
           await _saveBookingToLocal({
             'id': result['booking_id'],
@@ -114,6 +119,23 @@ class BookingService {
         'success': false,
         'error': e.toString(),
       };
+    }
+  }
+
+  // Method baru untuk menandai promo sebagai used
+  static Future<void> _markPromoAsUsed(int claimedPromoId) async {
+    try {
+      print('Marking promo as used: $claimedPromoId');
+
+      await _supabase.from('claimed_promos').update({
+        'is_used': true,
+        'used_at': DateTime.now().toIso8601String(),
+      }).eq('id', claimedPromoId);
+
+      print('Promo marked as used successfully');
+    } catch (e) {
+      print('Error marking promo as used: $e');
+      // Tidak throw error karena booking sudah berhasil
     }
   }
 
@@ -187,48 +209,134 @@ class BookingService {
     }
   }
 
-  // Mendapatkan promo yang tersedia untuk user
-  static Future<List<Map<String, dynamic>>>
-      getAvailablePromosForBooking() async {
+  // Updated method getAvailablePromosForBooking dengan filter kategori
+  static Future<List<Map<String, dynamic>>> getAvailablePromosForBooking({
+    String? serviceCategory,
+  }) async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return [];
 
       print('Getting available promos for booking for user: ${user.id}');
+      print('Service category: $serviceCategory');
 
       final response =
           await _supabase.rpc('get_available_promos_for_booking', params: {
         'p_user_id': user.id,
       });
 
-      print('Available promos for booking: $response');
+      print('Available promos response: $response');
 
-      return List<Map<String, dynamic>>.from(response ?? []);
+      List<Map<String, dynamic>> availablePromos =
+          List<Map<String, dynamic>>.from(response ?? []);
+
+      // Filter berdasarkan kategori jika ada
+      if (serviceCategory != null && serviceCategory != 'general') {
+        availablePromos = availablePromos.where((promo) {
+          // Ambil kategori dari promo
+          List<dynamic> promoCategories = [];
+
+          // Cek struktur data promo
+          if (promo['promo'] != null &&
+              promo['promo']['kategori_layanan'] != null) {
+            promoCategories = promo['promo']['kategori_layanan'];
+          } else if (promo['kategori_layanan'] != null) {
+            promoCategories = promo['kategori_layanan'];
+          } else {
+            promoCategories = ['general']; // Default
+          }
+
+          print(
+              'Promo: ${promo['promo_title']} - Categories: $promoCategories');
+          print('Service category: $serviceCategory');
+
+          // Cek apakah promo berlaku untuk kategori ini
+          bool isValid = promoCategories.contains('all') ||
+              promoCategories.contains('general') ||
+              promoCategories.contains(serviceCategory);
+
+          print('Is valid: $isValid');
+          return isValid;
+        }).toList();
+      }
+
+      print('Filtered promos count: ${availablePromos.length}');
+      return availablePromos;
     } catch (e) {
       print('Error getting available promos for booking: $e');
       return [];
     }
   }
 
-  // Mendapatkan semua promo yang aktif
-  static Future<List<Map<String, dynamic>>> getAvailablePromos() async {
+  // Method untuk validasi promo dengan kategori
+  static Future<bool> validatePromoForService(
+      int claimedPromoId, String serviceCategory) async {
     try {
-      print('Getting all available promos...');
+      final user = _supabase.auth.currentUser;
+      if (user == null) return false;
 
-      final response = await _supabase
-          .from('promo')
-          .select('*')
-          .eq('status', 'aktif')
-          .or('tanggal_berakhir.is.null,tanggal_berakhir.gte.${DateTime.now().toIso8601String().split('T')[0]}')
-          .order('created_at', ascending: false);
+      // Ambil detail promo yang diklaim
+      final claimedPromo = await _supabase
+          .from('claimed_promos')
+          .select('*, promo!inner(*)')
+          .eq('id', claimedPromoId)
+          .eq('user_id', user.id)
+          .eq('is_used', false)
+          .maybeSingle();
 
-      print('Available promos: $response');
+      if (claimedPromo == null) {
+        print('Claimed promo not found or already used');
+        return false;
+      }
 
-      return List<Map<String, dynamic>>.from(response ?? []);
+      // Cek kategori promo
+      List<dynamic> promoCategories =
+          claimedPromo['promo']['kategori_layanan'] ?? ['general'];
+
+      bool isValid = promoCategories.contains('all') ||
+          promoCategories.contains('general') ||
+          promoCategories.contains(serviceCategory);
+
+      print(
+          'Promo validation - Categories: $promoCategories, Service: $serviceCategory, Valid: $isValid');
+
+      return isValid;
     } catch (e) {
-      print('Error getting promos: $e');
-      return [];
+      print('Error validating promo: $e');
+      return false;
     }
+  }
+
+  // Method untuk mendapatkan struktur kategori yang konsisten
+  static Map<String, String> getServiceCategoryMap() {
+    return {
+      'hair_cut': 'Potong Rambut',
+      'facial': 'Perawatan Wajah',
+      'makeup': 'Makeup & Rias',
+      'spa': 'Spa & Perawatan',
+      'nail_care': 'Perawatan Kuku',
+      'general': 'Umum',
+      'all': 'Semua Kategori'
+    };
+  }
+
+  // Method untuk mendapatkan kategori layanan berdasarkan nama service
+  static String getServiceCategory(String serviceName) {
+    String lowerName = serviceName.toLowerCase();
+
+    if (lowerName.contains('potong') || lowerName.contains('rambut')) {
+      return 'hair_cut';
+    } else if (lowerName.contains('wajah') || lowerName.contains('facial')) {
+      return 'facial';
+    } else if (lowerName.contains('rias') || lowerName.contains('makeup')) {
+      return 'makeup';
+    } else if (lowerName.contains('spa') || lowerName.contains('perawatan')) {
+      return 'spa';
+    } else if (lowerName.contains('kuku') || lowerName.contains('nail')) {
+      return 'nail_care';
+    }
+
+    return 'general';
   }
 
   // Mengklaim promo
@@ -460,6 +568,27 @@ class BookingService {
     } catch (e) {
       print('Error getting promo stats: $e');
       return {};
+    }
+  }
+
+  // Method untuk mendapatkan promo berdasarkan ID claimed promo
+  static Future<Map<String, dynamic>?> getClaimedPromoDetails(
+      int claimedPromoId) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return null;
+
+      final response = await _supabase
+          .from('claimed_promos')
+          .select('*, promo!inner(*)')
+          .eq('id', claimedPromoId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      print('Error getting claimed promo details: $e');
+      return null;
     }
   }
 
