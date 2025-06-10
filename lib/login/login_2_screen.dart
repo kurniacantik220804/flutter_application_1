@@ -487,7 +487,7 @@ class _login2screenState extends State<login2screen> {
             child: Column(
               children: [
                 const SizedBox(height: 40),
-                // Logo
+                // Logo - Updated to use PNG from assets
                 Container(
                   height: 100,
                   width: 100,
@@ -502,10 +502,21 @@ class _login2screenState extends State<login2screen> {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.spa,
-                    size: 60,
-                    color: Colors.pink,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/logo.png',
+                      height: 80,
+                      width: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback to original icon if image fails to load
+                        return const Icon(
+                          Icons.spa,
+                          size: 60,
+                          color: Colors.pink,
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
