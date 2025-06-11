@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
 import 'package:flutter_application_1/database/produk_service.dart';
+import 'package:flutter_application_1/database/booking_service.dart'; // Import BookingService
 import 'package:flutter_application_1/screen/promo_menu_widget.dart';
 
 class BookingForm extends StatefulWidget {
@@ -22,6 +23,10 @@ class BookingForm extends StatefulWidget {
 
 class _BookingFormState extends State<BookingForm> {
   final _formKey = GlobalKey<FormState>();
+  final _customerNameController = TextEditingController();
+  final _customerPhoneController = TextEditingController();
+  final _notesController = TextEditingController();
+
   DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
   bool isLoading = false;
@@ -36,6 +41,24 @@ class _BookingFormState extends State<BookingForm> {
     super.initState();
     _calculatePrice();
     _promoController.loadAvailablePromosForBooking();
+    _testDatabaseConnection();
+  }
+
+  @override
+  void dispose() {
+    _customerNameController.dispose();
+    _customerPhoneController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _testDatabaseConnection() async {
+    try {
+      bool isConnected = await BookingService.testDatabaseConnection();
+      print('Database connection test result: $isConnected');
+    } catch (e) {
+      print('Database connection test error: $e');
+    }
   }
 
   void _calculatePrice() {
@@ -157,86 +180,102 @@ class _BookingFormState extends State<BookingForm> {
 
   Future<void> _submitBooking() async {
     if (_formKey.currentState!.validate()) {
+      // Validasi input customer
+      if (_customerNameController.text.trim().isEmpty) {
+        Get.snackbar(
+          'Error',
+          'Nama pelanggan harus diisi',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      if (_customerPhoneController.text.trim().isEmpty) {
+        Get.snackbar(
+          'Error',
+          'Nomor telepon harus diisi',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
       setState(() => isLoading = true);
 
       try {
-        // Gunakan icon dari database jika tersedia, jika tidak gunakan logika fallback
-        IconData iconData = Icons.local_offer;
-        if (widget.produkData['icon_name'] != null) {
-          iconData =
-              ProdukService.getIconFromString(widget.produkData['icon_name']);
-        } else {
-          String namaProduk =
-              (widget.produkData['nama_produk'] ?? '').toString().toLowerCase();
-          if (namaProduk.contains('potong') || namaProduk.contains('rambut')) {
-            iconData = Icons.content_cut;
-          } else if (namaProduk.contains('wajah') ||
-              namaProduk.contains('face')) {
-            iconData = Icons.face;
-          } else if (namaProduk.contains('rias') ||
-              namaProduk.contains('makeup')) {
-            iconData = Icons.brush;
-          } else if (namaProduk.contains('perawatan') ||
-              namaProduk.contains('spa')) {
-            iconData = Icons.spa;
-          }
-        }
+        // Format tanggal dan waktu
+        String formattedDate =
+            '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}';
+        String formattedTime =
+            '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
-        final booking = {
-          'id_produk': widget.idProduk,
-          'title': widget.produkData['nama_produk'] ?? 'Layanan',
-          'original_price': _formatPrice(originalPrice),
-          'discount_amount': selectedPromo != null
-              ? _formatPrice(_calculateDiscountAmount())
-              : 'Rp 0',
-          'final_price': _formatPrice(_calculateFinalPrice()),
-          'price': _formatPrice(_calculateFinalPrice()), // Untuk kompatibilitas
-          'promo_id': selectedPromo?['id']?.toString(),
-          'promo_title': selectedPromo?['promo']?['nama_promo'] ??
+        // Panggil BookingService untuk membuat booking
+        final result = await BookingService.createBooking(
+          serviceId: widget.idProduk,
+          serviceName: widget.produkData['nama_produk'] ?? 'Layanan',
+          bookingDate: formattedDate,
+          bookingTime: formattedTime,
+          originalPrice: originalPrice,
+          customerName: _customerNameController.text.trim(),
+          customerPhone: _customerPhoneController.text.trim(),
+          promoId: selectedPromo?['id'],
+          promoTitle: selectedPromo?['promo']?['nama_promo'] ??
               selectedPromo?['promo_title'],
-          'promo_discount': selectedPromo != null
+          promoDiscountPercent: selectedPromo != null
               ? (selectedPromo!['promo']?['diskon_persen'] ??
                   selectedPromo!['discount_percent'] ??
                   0)
-              : 0,
-          'date':
-              '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-          'time':
-              '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-          'payment': 'Cash',
-          'icon': iconData.codePoint,
-          'booking_timestamp': DateTime.now().millisecondsSinceEpoch,
-        };
+              : null,
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
 
-        final box = GetStorage();
-        List<dynamic> bookings = box.read('bookings') ?? [];
-        bookings.add(booking);
-        box.write('bookings', bookings);
-
-        await Future.delayed(const Duration(seconds: 1));
         setState(() => isLoading = false);
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(selectedPromo != null
-                  ? 'Booking berhasil dengan promo ${selectedPromo!['promo']?['nama_promo'] ?? selectedPromo!['promo_title']}!'
-                  : 'Booking berhasil ditambahkan!'),
+        if (result['success'] == true) {
+          // Booking berhasil
+          if (mounted) {
+            Get.snackbar(
+              'Booking Berhasil!',
+              result['message'] ?? 'Booking berhasil dibuat',
               backgroundColor: Colors.green,
-            ),
-          );
+              colorText: Colors.white,
+              duration: const Duration(seconds: 3),
+            );
 
-          Get.forceAppUpdate();
-          Navigator.pop(context);
+            // Refresh booking controller jika ada
+            try {
+              Get.find<BookingController>().refreshBookings();
+            } catch (e) {
+              print('BookingController not found: $e');
+            }
+
+            // Kembali ke halaman sebelumnya
+            Navigator.pop(context);
+          }
+        } else {
+          // Booking gagal
+          if (mounted) {
+            Get.snackbar(
+              'Booking Gagal',
+              result['message'] ?? 'Gagal membuat booking',
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 3),
+            );
+          }
         }
       } catch (e) {
         setState(() => isLoading = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal membuat booking: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
+          Get.snackbar(
+            'Error',
+            'Terjadi kesalahan: ${e.toString()}',
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
           );
         }
       }
@@ -254,6 +293,70 @@ class _BookingFormState extends State<BookingForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Customer Information
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: colors.primary.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                  color: colors.primary.withOpacity(0.05),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.person, color: colors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Informasi Pelanggan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _customerNameController,
+                      decoration: InputDecoration(
+                        labelText: 'Nama Pelanggan',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        prefixIcon: const Icon(Icons.person_outline),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Nama pelanggan harus diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _customerPhoneController,
+                      decoration: InputDecoration(
+                        labelText: 'Nomor Telepon',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Nomor telepon harus diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // Date and Time Selection
               Row(
                 children: [
@@ -305,6 +408,48 @@ class _BookingFormState extends State<BookingForm> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Notes Section
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: colors.primary.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                  color: colors.primary.withOpacity(0.05),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.note_outlined,
+                            color: colors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Catatan (Opsional)',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _notesController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Tambahkan catatan khusus untuk booking ini...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -542,21 +687,39 @@ class BookingController extends GetxController {
     loadBookings();
   }
 
-  void loadBookings() {
-    final box = GetStorage();
-    if (box.hasData('bookings')) {
-      List<dynamic> savedBookings = box.read('bookings');
-      _bookings.value = List<Map<String, dynamic>>.from(savedBookings);
+  void loadBookings() async {
+    try {
+      // Load from database first
+      List<Map<String, dynamic>> databaseBookings =
+          await BookingService.getUserBookingHistory();
+
+      _bookings.value = databaseBookings;
+
+      // Sort by timestamp
       _bookings.sort((a, b) {
         int timestampA = a['booking_timestamp'] ?? 0;
         int timestampB = b['booking_timestamp'] ?? 0;
         return timestampB.compareTo(timestampA);
       });
+
+      update();
+    } catch (e) {
+      print('Error loading bookings: $e');
+      // Fallback to local storage
+      final box = GetStorage();
+      if (box.hasData('bookings')) {
+        List<dynamic> savedBookings = box.read('bookings');
+        _bookings.value = List<Map<String, dynamic>>.from(savedBookings);
+        _bookings.sort((a, b) {
+          int timestampA = a['booking_timestamp'] ?? 0;
+          int timestampB = b['booking_timestamp'] ?? 0;
+          return timestampB.compareTo(timestampA);
+        });
+      }
     }
   }
 
   void refreshBookings() {
     loadBookings();
-    update();
   }
 }

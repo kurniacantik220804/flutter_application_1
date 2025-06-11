@@ -10,7 +10,7 @@ class BookingService {
   static Future<bool> testDatabaseConnection() async {
     try {
       final response = await _supabase.from('bookings').select('id').limit(1);
-      print('Database connection successful');
+      print('Database connection successful: $response');
       return true;
     } catch (e) {
       print('Database connection error: $e');
@@ -18,8 +18,8 @@ class BookingService {
     }
   }
 
-  // Membuat booking baru dengan promo
-  static Future<Map<String, dynamic>?> createBooking({
+  // Membuat booking baru - Simplified version
+  static Future<Map<String, dynamic>> createBooking({
     required String serviceId,
     required String serviceName,
     required String bookingDate,
@@ -27,7 +27,9 @@ class BookingService {
     required double originalPrice,
     required String customerName,
     required String customerPhone,
-    int? claimedPromoId,
+    int? promoId,
+    String? promoTitle,
+    int? promoDiscountPercent,
     String? notes,
   }) async {
     try {
@@ -36,84 +38,129 @@ class BookingService {
         throw Exception('User belum login');
       }
 
-      // Parse tanggal dari format dd/mm/yyyy ke yyyy-mm-dd
-      String formattedDate = _parseDate(bookingDate);
-      int originalPriceInt = originalPrice.toInt();
-
-      print('Creating booking with params:');
+      print('Creating booking with data:');
       print('User ID: ${user.id}');
       print('Service ID: $serviceId');
       print('Service Name: $serviceName');
-      print('Date: $formattedDate');
+      print('Date: $bookingDate');
       print('Time: $bookingTime');
-      print('Original Price: $originalPriceInt');
+      print('Original Price: $originalPrice');
       print('Customer Name: $customerName');
       print('Customer Phone: $customerPhone');
-      print('Claimed Promo ID: $claimedPromoId');
+      print('Promo ID: $promoId');
 
-      // Panggil function untuk membuat booking dengan promo
-      final response =
-          await _supabase.rpc('create_booking_with_promo', params: {
-        'p_user_id': user.id,
-        'p_service_name': serviceName,
-        'p_service_id': serviceId,
-        'p_booking_date': formattedDate,
-        'p_booking_time': bookingTime,
-        'p_original_price': originalPriceInt,
-        'p_customer_name': customerName,
-        'p_customer_phone': customerPhone,
-        'p_claimed_promo_id': claimedPromoId,
-        'p_notes': notes,
-      });
+      // Parse tanggal dari format dd/mm/yyyy ke yyyy-mm-dd
+      String formattedDate = _parseDate(bookingDate);
 
-      print('Database response: $response');
+      // Calculate discount and final price
+      double discountAmount = 0;
+      double finalPrice = originalPrice;
 
-      if (response != null && response.isNotEmpty) {
-        final result = response[0];
-
-        if (result['success'] == true) {
-          // Simpan ke local storage untuk compatibility
-          await _saveBookingToLocal({
-            'id': result['booking_id'],
-            'booking_code': result['booking_code'],
-            'title': serviceName,
-            'date': bookingDate,
-            'time': bookingTime,
-            'customer_name': customerName,
-            'customer_phone': customerPhone,
-            'original_price': 'Rp ${_formatCurrency(originalPrice)}',
-            'final_price':
-                'Rp ${_formatCurrency(result['final_price'].toDouble())}',
-            'price': 'Rp ${_formatCurrency(result['final_price'].toDouble())}',
-            'discount_amount': result['discount_amount'] > 0
-                ? 'Rp ${_formatCurrency(result['discount_amount'].toDouble())}'
-                : null,
-            'booking_timestamp': DateTime.now().millisecondsSinceEpoch,
-            'icon': _getIconForService(serviceName),
-            'status': 'pending',
-            'notes': notes,
-          });
-
-          return {
-            'success': true,
-            'booking_id': result['booking_id'],
-            'booking_code': result['booking_code'],
-            'final_price': result['final_price'],
-            'discount_amount': result['discount_amount'],
-            'message': result['message'],
-          };
-        } else {
-          throw Exception(result['message'] ?? 'Gagal membuat booking');
-        }
+      if (promoId != null && promoDiscountPercent != null) {
+        discountAmount = originalPrice * (promoDiscountPercent / 100.0);
+        finalPrice = originalPrice - discountAmount;
       }
 
-      throw Exception('Gagal membuat booking - response kosong');
+      // Generate booking code
+      String bookingCode =
+          'BK${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+
+      // Prepare booking data
+      final bookingData = {
+        'user_id': user.id,
+        'booking_code': bookingCode,
+        'service_name': serviceName,
+        'service_id': serviceId,
+        'booking_date': formattedDate,
+        'booking_time': bookingTime,
+        'original_price': originalPrice.toInt(),
+        'discount_amount': discountAmount.toInt(),
+        'final_price': finalPrice.toInt(),
+        'customer_name': customerName,
+        'customer_phone': customerPhone,
+        'status': 'pending',
+        'payment_status': 'unpaid',
+        'notes': notes,
+        'promo_id': promoId,
+        'promo_title': promoTitle,
+        'promo_diskon_persen': promoDiscountPercent,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      print('Booking data to insert: $bookingData');
+
+      // Insert booking to database
+      final response = await _supabase
+          .from('bookings')
+          .insert(bookingData)
+          .select()
+          .single();
+
+      print('Booking inserted successfully: $response');
+
+      // Mark promo as used if applicable
+      if (promoId != null) {
+        await _markPromoAsUsed(user.id, promoId);
+      }
+
+      // Save to local storage for offline access
+      await _saveBookingToLocal({
+        'id': response['id'],
+        'booking_code': bookingCode,
+        'title': serviceName,
+        'date': bookingDate,
+        'time': bookingTime,
+        'customer_name': customerName,
+        'customer_phone': customerPhone,
+        'original_price': 'Rp ${_formatCurrency(originalPrice)}',
+        'final_price': 'Rp ${_formatCurrency(finalPrice)}',
+        'price': 'Rp ${_formatCurrency(finalPrice)}',
+        'discount_amount':
+            discountAmount > 0 ? 'Rp ${_formatCurrency(discountAmount)}' : null,
+        'promo_title': promoTitle,
+        'promo_discount': promoDiscountPercent,
+        'booking_timestamp': DateTime.now().millisecondsSinceEpoch,
+        'icon': _getIconForService(serviceName),
+        'status': 'pending',
+        'payment_status': 'unpaid',
+        'notes': notes,
+      });
+
+      return {
+        'success': true,
+        'booking_id': response['id'],
+        'booking_code': bookingCode,
+        'final_price': finalPrice,
+        'discount_amount': discountAmount,
+        'message': 'Booking berhasil dibuat',
+      };
     } catch (e) {
       print('Error creating booking: $e');
       return {
         'success': false,
         'error': e.toString(),
+        'message': 'Gagal membuat booking: ${e.toString()}',
       };
+    }
+  }
+
+  // Mark promo as used
+  static Future<void> _markPromoAsUsed(String userId, int promoId) async {
+    try {
+      // Update claimed_promos table
+      await _supabase
+          .from('claimed_promos')
+          .update({
+            'is_used': true,
+            'used_at': DateTime.now().toIso8601String(),
+          })
+          .eq('user_id', userId)
+          .eq('id', promoId);
+
+      print('Promo marked as used: $promoId');
+    } catch (e) {
+      print('Error marking promo as used: $e');
     }
   }
 
@@ -122,13 +169,14 @@ class BookingService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        throw Exception('User belum login');
+        print('User not logged in, returning local bookings');
+        return _getLocalBookings();
       }
 
       print('Getting booking history for user: ${user.id}');
 
       final response = await _supabase
-          .from('booking_with_promo_details')
+          .from('bookings')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', ascending: false);
@@ -137,7 +185,7 @@ class BookingService {
 
       List<Map<String, dynamic>> bookings = [];
 
-      if (response != null) {
+      if (response != null && response.isNotEmpty) {
         for (var booking in response) {
           // Convert format tanggal dari yyyy-mm-dd ke dd/mm/yyyy
           String formattedDate =
@@ -149,19 +197,18 @@ class BookingService {
             'title': booking['service_name'],
             'service_id': booking['service_id'],
             'date': formattedDate,
-            'time': booking['booking_time']
-                .toString()
-                .substring(0, 5), // Remove seconds
+            'time': booking['booking_time'].toString(),
             'original_price':
                 'Rp ${_formatCurrency(booking['original_price'].toDouble())}',
             'final_price':
                 'Rp ${_formatCurrency(booking['final_price'].toDouble())}',
             'price': 'Rp ${_formatCurrency(booking['final_price'].toDouble())}',
-            'discount_amount': booking['discount_amount'] > 0
+            'discount_amount': booking['discount_amount'] != null &&
+                    booking['discount_amount'] > 0
                 ? 'Rp ${_formatCurrency(booking['discount_amount'].toDouble())}'
                 : null,
-            'promo_used': booking['claimed_promo_title'],
-            'promo_discount_percent': booking['promo_discount_percent'],
+            'promo_title': booking['promo_title'],
+            'promo_discount': booking['promo_diskon_persen'],
             'customer_name': booking['customer_name'],
             'customer_phone': booking['customer_phone'],
             'status': booking['status'] ?? 'pending',
@@ -171,14 +218,12 @@ class BookingService {
                 : DateTime.now().millisecondsSinceEpoch,
             'icon': _getIconForService(booking['service_name']),
             'notes': booking['notes'],
-            'booking_type': booking['booking_type'],
           });
         }
       }
 
       // Update local storage
       await _updateLocalStorage(bookings);
-
       return bookings;
     } catch (e) {
       print('Error getting booking history: $e');
@@ -187,23 +232,57 @@ class BookingService {
     }
   }
 
-  // Mendapatkan promo yang tersedia untuk user
+  // Mendapatkan promo yang tersedia untuk user (dari claimed_promos)
   static Future<List<Map<String, dynamic>>>
       getAvailablePromosForBooking() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) return [];
+      if (user == null) {
+        print('User not logged in');
+        return [];
+      }
 
       print('Getting available promos for booking for user: ${user.id}');
 
-      final response =
-          await _supabase.rpc('get_available_promos_for_booking', params: {
-        'p_user_id': user.id,
-      });
+      // Get unused claimed promos
+      final response = await _supabase
+          .from('claimed_promos')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_used', false)
+          .eq('status', 'active')
+          .order('claimed_at', ascending: false);
 
       print('Available promos for booking: $response');
 
-      return List<Map<String, dynamic>>.from(response ?? []);
+      if (response != null && response.isNotEmpty) {
+        List<Map<String, dynamic>> promos = [];
+
+        for (var claimed in response) {
+          // Get promo details
+          final promoResponse = await _supabase
+              .from('promo')
+              .select('*')
+              .eq('nama_promo', claimed['promo_title'])
+              .eq('status', 'aktif')
+              .maybeSingle();
+
+          if (promoResponse != null) {
+            promos.add({
+              'id': claimed['id'],
+              'promo_title': claimed['promo_title'],
+              'promo': promoResponse,
+              'discount_percent': promoResponse['diskon_persen'],
+              'claimed_at': claimed['claimed_at'],
+              'expires_at': claimed['expires_at'],
+            });
+          }
+        }
+
+        return promos;
+      }
+
+      return [];
     } catch (e) {
       print('Error getting available promos for booking: $e');
       return [];
@@ -219,7 +298,6 @@ class BookingService {
           .from('promo')
           .select('*')
           .eq('status', 'aktif')
-          .or('tanggal_berakhir.is.null,tanggal_berakhir.gte.${DateTime.now().toIso8601String().split('T')[0]}')
           .order('created_at', ascending: false);
 
       print('Available promos: $response');
@@ -264,13 +342,8 @@ class BookingService {
         throw Exception('Anda sudah mengklaim promo ini');
       }
 
-      // Cek apakah promo sudah expired
-      if (promoResponse['tanggal_berakhir'] != null) {
-        DateTime expiryDate = DateTime.parse(promoResponse['tanggal_berakhir']);
-        if (DateTime.now().isAfter(expiryDate)) {
-          throw Exception('Promo sudah kedaluwarsa');
-        }
-      }
+      // Calculate expiry date (30 days from claim)
+      DateTime expiryDate = DateTime.now().add(const Duration(days: 30));
 
       // Claim promo
       final claimResponse = await _supabase
@@ -278,6 +351,10 @@ class BookingService {
           .insert({
             'user_id': user.id,
             'promo_title': promoTitle,
+            'status': 'active',
+            'is_used': false,
+            'claimed_at': DateTime.now().toIso8601String(),
+            'expires_at': expiryDate.toIso8601String(),
           })
           .select()
           .single();
@@ -308,14 +385,42 @@ class BookingService {
 
       final response = await _supabase
           .from('claimed_promos')
-          .select('*, promo!inner(*)')
+          .select('*')
           .eq('user_id', user.id)
           .eq('is_used', false)
+          .eq('status', 'active')
           .order('claimed_at', ascending: false);
 
       print('Claimed promos: $response');
 
-      return List<Map<String, dynamic>>.from(response ?? []);
+      if (response != null && response.isNotEmpty) {
+        List<Map<String, dynamic>> promos = [];
+
+        for (var claimed in response) {
+          // Get promo details
+          final promoResponse = await _supabase
+              .from('promo')
+              .select('*')
+              .eq('nama_promo', claimed['promo_title'])
+              .eq('status', 'aktif')
+              .maybeSingle();
+
+          if (promoResponse != null) {
+            promos.add({
+              'id': claimed['id'],
+              'promo_title': claimed['promo_title'],
+              'promo': promoResponse,
+              'claimed_at': claimed['claimed_at'],
+              'expires_at': claimed['expires_at'],
+              'status': claimed['status'],
+            });
+          }
+        }
+
+        return promos;
+      }
+
+      return [];
     } catch (e) {
       print('Error getting claimed promos: $e');
       return [];
@@ -391,7 +496,7 @@ class BookingService {
       print('Getting booking by ID: $bookingId');
 
       final response = await _supabase
-          .from('booking_with_promo_details')
+          .from('bookings')
           .select('*')
           .eq('id', bookingId)
           .maybeSingle();
@@ -406,15 +511,16 @@ class BookingService {
           'title': response['service_name'],
           'service_id': response['service_id'],
           'date': formattedDate,
-          'time': response['booking_time'].toString().substring(0, 5),
+          'time': response['booking_time'].toString(),
           'original_price':
               'Rp ${_formatCurrency(response['original_price'].toDouble())}',
           'final_price':
               'Rp ${_formatCurrency(response['final_price'].toDouble())}',
-          'discount_amount': response['discount_amount'] > 0
+          'discount_amount': response['discount_amount'] != null &&
+                  response['discount_amount'] > 0
               ? 'Rp ${_formatCurrency(response['discount_amount'].toDouble())}'
               : null,
-          'promo_used': response['claimed_promo_title'],
+          'promo_title': response['promo_title'],
           'customer_name': response['customer_name'],
           'customer_phone': response['customer_phone'],
           'status': response['status'],
@@ -432,49 +538,21 @@ class BookingService {
     }
   }
 
-  // Get promo usage statistics
-  static Future<Map<String, dynamic>> getPromoStats() async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return {};
-
-      final response = await _supabase
-          .from('promo_usage_log')
-          .select('*')
-          .eq('user_id', user.id);
-
-      int totalPromoUsed = response?.length ?? 0;
-      double totalSavings = 0;
-
-      if (response != null) {
-        for (var usage in response) {
-          totalSavings += (usage['discount_amount'] ?? 0).toDouble();
-        }
-      }
-
-      return {
-        'total_promo_used': totalPromoUsed,
-        'total_savings': totalSavings,
-        'formatted_savings': 'Rp ${_formatCurrency(totalSavings)}',
-      };
-    } catch (e) {
-      print('Error getting promo stats: $e');
-      return {};
-    }
-  }
-
   // Helper functions
   static Future<void> _saveBookingToLocal(Map<String, dynamic> booking) async {
     try {
       List<Map<String, dynamic>> existingBookings = _getLocalBookings();
 
       // Remove existing booking with same ID if exists
-      existingBookings.removeWhere((b) => b['id'] == booking['id']);
+      if (booking['id'] != null) {
+        existingBookings.removeWhere((b) => b['id'] == booking['id']);
+      }
 
       // Add new booking
       existingBookings.insert(0, booking);
 
       await _storage.write('bookings', existingBookings);
+      print('Booking saved to local storage');
     } catch (e) {
       print('Error saving booking to local: $e');
     }
@@ -496,6 +574,7 @@ class BookingService {
       List<Map<String, dynamic>> bookings) async {
     try {
       await _storage.write('bookings', bookings);
+      print('Local storage updated with ${bookings.length} bookings');
     } catch (e) {
       print('Error updating local storage: $e');
     }
@@ -553,27 +632,6 @@ class BookingService {
       return Icons.spa.codePoint;
     }
     return Icons.local_offer.codePoint;
-  }
-
-  // Cari promo berdasarkan nama
-  static Future<Map<String, dynamic>?> findPromoByName(String promoName) async {
-    try {
-      print('Searching promo by name: $promoName');
-
-      final response = await _supabase
-          .from('promo')
-          .select('*')
-          .ilike('nama_promo', '%$promoName%')
-          .eq('status', 'aktif')
-          .maybeSingle();
-
-      print('Found promo: $response');
-
-      return response;
-    } catch (e) {
-      print('Error finding promo by name: $e');
-      return null;
-    }
   }
 
   // Clear all local data (untuk testing)
