@@ -15,7 +15,6 @@ class login2screen extends StatefulWidget {
 
 class _login2screenState extends State<login2screen> {
   bool passwordVisible = false;
-  bool isResetMode = false;
 
   // Controllers untuk input fields
   final TextEditingController emailController = TextEditingController();
@@ -27,15 +26,6 @@ class _login2screenState extends State<login2screen> {
   void togglePasswordVisibility() {
     setState(() {
       passwordVisible = !passwordVisible;
-    });
-  }
-
-  void showResetPasswordScreen() {
-    setState(() {
-      isResetMode = true;
-      // Clear fields
-      emailController.clear();
-      passwordController.clear();
     });
   }
 
@@ -130,51 +120,6 @@ class _login2screenState extends State<login2screen> {
     );
   }
 
-  Future<void> handleResetPassword() async {
-    if (emailController.text.trim().isEmpty) {
-      _showSnackBar('Masukkan email Anda', Colors.red);
-      return;
-    }
-
-    if (!GetUtils.isEmail(emailController.text.trim())) {
-      _showSnackBar('Format email tidak valid', Colors.red);
-      return;
-    }
-
-    try {
-      final success =
-          await authService.resetPassword(emailController.text.trim());
-
-      if (success) {
-        _showSnackBar(
-            'Link reset password telah dikirim ke email Anda', Colors.green);
-
-        setState(() {
-          isResetMode = false;
-          emailController.clear();
-        });
-      }
-    } on AuthException catch (e) {
-      String errorMessage = 'Reset password gagal: ';
-
-      switch (e.message.toLowerCase()) {
-        case 'invalid email':
-          errorMessage += 'Format email tidak valid';
-          break;
-        case 'user not found':
-          errorMessage += 'Email tidak terdaftar';
-          break;
-        default:
-          errorMessage += e.message;
-      }
-
-      _showSnackBar(errorMessage, Colors.red);
-    } catch (e) {
-      _showSnackBar('Terjadi kesalahan: ${e.toString()}', Colors.red);
-      print('Reset password error: $e');
-    }
-  }
-
   void _showSnackBar(String message, Color color) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -203,51 +148,6 @@ class _login2screenState extends State<login2screen> {
           ),
         ),
         const SizedBox(height: 20),
-
-        // Enhanced info untuk user dengan role indicators
-        Container(
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.blue[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue[200]!),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                "📝 Silakan daftar terlebih dahulu jika belum memiliki akun",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                  fontSize: 12,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              // Role indicators
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildRoleIndicator('👤 USER', Colors.blue),
-                  _buildRoleIndicator('🔑 ADMIN', Colors.red),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Navigation info
-              const Text(
-                "Admin akan diarahkan ke Dashboard Khusus",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
-                  fontStyle: FontStyle.italic,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-
         // Email field
         TextField(
           controller: emailController,
@@ -286,17 +186,6 @@ class _login2screenState extends State<login2screen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.pink, width: 2),
             ),
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // Forgot password link
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: authService.isLoading ? null : showResetPasswordScreen,
-            child: const Text("Lupa password?",
-                style: TextStyle(color: Colors.pink)),
           ),
         ),
         const SizedBox(height: 24),
@@ -382,93 +271,6 @@ class _login2screenState extends State<login2screen> {
     );
   }
 
-  Widget buildResetPasswordForm() {
-    return Column(
-      children: [
-        const Text(
-          "Lupa Password",
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          "Masukkan email Anda dan kami akan mengirimkan link untuk reset password",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.black54),
-        ),
-        const SizedBox(height: 24),
-
-        // Email field
-        TextField(
-          controller: emailController,
-          keyboardType: TextInputType.emailAddress,
-          enabled: !authService.isLoading,
-          decoration: InputDecoration(
-            labelText: "Masukkan Email",
-            prefixIcon: const Icon(Icons.email_outlined, color: Colors.pink),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.pink, width: 2),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Send reset code button
-        Obx(() => SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: authService.isLoading ? null : handleResetPassword,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pink,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                child: authService.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        "Kirim Link Reset",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-              ),
-            )),
-        const SizedBox(height: 20),
-
-        // Back to login
-        TextButton(
-          onPressed: authService.isLoading
-              ? null
-              : () {
-                  setState(() {
-                    isResetMode = false;
-                    emailController.clear();
-                  });
-                },
-          child: const Text(
-            "Kembali ke halaman Masuk",
-            style: TextStyle(color: Colors.pink),
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   void dispose() {
     emailController.dispose();
@@ -530,15 +332,10 @@ class _login2screenState extends State<login2screen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // Subtitle dengan role status
+                // Role status only
                 Obx(() => Column(
                       children: [
-                        const Text(
-                          "2023",
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
                         if (!authService.isGuest) ...[
-                          const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),
@@ -578,8 +375,7 @@ class _login2screenState extends State<login2screen> {
                       ),
                     ],
                   ),
-                  child:
-                      isResetMode ? buildResetPasswordForm() : buildLoginForm(),
+                  child: buildLoginForm(),
                 ),
                 const SizedBox(height: 40),
               ],

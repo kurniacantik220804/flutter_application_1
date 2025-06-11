@@ -16,14 +16,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool confirmPasswordVisible = false;
   bool isLoading = false;
   String selectedRole = 'user'; // Default role adalah user
-  
+
   // Admin validation password - ganti sesuai kebutuhan
   final String adminValidationPassword = "admin123";
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   final TextEditingController adminCodeController = TextEditingController();
 
   void togglePasswordVisibility() {
@@ -284,10 +285,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.spa,
-                    size: 45,
-                    color: Colors.pink,
+                  child: Image.asset(
+                    'assets/logo.png',
+                    width: 45,
+                    height: 45,
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -331,25 +333,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: selectedRole == 'admin' ? Colors.red[50] : Colors.blue[50],
+                          color: selectedRole == 'admin'
+                              ? Colors.red[50]
+                              : Colors.blue[50],
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: selectedRole == 'admin' ? Colors.red[200]! : Colors.blue[200]!
-                          ),
+                              color: selectedRole == 'admin'
+                                  ? Colors.red[200]!
+                                  : Colors.blue[200]!),
                         ),
                         child: Row(
                           children: [
                             Icon(
-                              selectedRole == 'admin' ? Icons.admin_panel_settings : Icons.person,
-                              color: selectedRole == 'admin' ? Colors.red : Colors.blue,
-                              size: 16
-                            ),
+                                selectedRole == 'admin'
+                                    ? Icons.admin_panel_settings
+                                    : Icons.person,
+                                color: selectedRole == 'admin'
+                                    ? Colors.red
+                                    : Colors.blue,
+                                size: 16),
                             const SizedBox(width: 8),
                             Text(
                               "Mendaftar sebagai: ${selectedRole.toUpperCase()}",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: selectedRole == 'admin' ? Colors.red[700] : Colors.blue[700],
+                                color: selectedRole == 'admin'
+                                    ? Colors.red[700]
+                                    : Colors.blue[700],
                                 fontSize: 12,
                               ),
                             ),
@@ -528,7 +538,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.warning_amber, color: Colors.red[700], size: 16),
+                              Icon(Icons.warning_amber,
+                                  color: Colors.red[700], size: 16),
                               const SizedBox(width: 8),
                               const Expanded(
                                 child: Text(
@@ -550,12 +561,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: InputDecoration(
                             labelText: "Kode Admin",
                             hintText: "Masukkan kode admin",
-                            prefixIcon: const Icon(Icons.security, color: Colors.red),
+                            prefixIcon:
+                                const Icon(Icons.security, color: Colors.red),
                             border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.red, width: 2),
+                              borderSide:
+                                  const BorderSide(color: Colors.red, width: 2),
                             ),
                           ),
                         ),
