@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
+import 'package:flutter_application_1/database/booking_service.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -13,6 +14,9 @@ class RiwayatScreen extends StatefulWidget {
 class _RiwayatScreenState extends State<RiwayatScreen>
     with WidgetsBindingObserver {
   List<Map<String, dynamic>> bookings = [];
+  bool isLoading = false;
+  bool isRefreshing = false;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -42,7 +46,44 @@ class _RiwayatScreenState extends State<RiwayatScreen>
     _loadBookings();
   }
 
-  void _loadBookings() {
+  // Load bookings dari database dengan fallback ke local storage
+  Future<void> _loadBookings() async {
+    if (!mounted) return;
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      // Coba ambil dari database dulu
+      List<Map<String, dynamic>> databaseBookings =
+          await BookingService.getUserBookingHistory();
+
+      if (mounted) {
+        setState(() {
+          bookings = databaseBookings;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading bookings: $e');
+
+      // Fallback ke local storage jika database error
+      _loadLocalBookings();
+
+      if (mounted) {
+        setState(() {
+          errorMessage =
+              'Gagal memuat data dari server. Menampilkan data lokal.';
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Load bookings dari local storage (fallback)
+  void _loadLocalBookings() {
     final box = GetStorage();
     if (box.hasData('bookings')) {
       List<dynamic> savedBookings = box.read('bookings');
@@ -66,7 +107,61 @@ class _RiwayatScreenState extends State<RiwayatScreen>
     }
   }
 
-  void _deleteBooking(int index) {
+  // Refresh data dari server
+  Future<void> _refreshBookings() async {
+    if (!mounted) return;
+
+    setState(() {
+      isRefreshing = true;
+      errorMessage = null;
+    });
+
+    try {
+      // Sync dari server
+      await BookingService.syncFromServer();
+
+      // Load bookings terbaru
+      List<Map<String, dynamic>> refreshedBookings =
+          await BookingService.getUserBookingHistory();
+
+      if (mounted) {
+        setState(() {
+          bookings = refreshedBookings;
+          isRefreshing = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data berhasil diperbarui'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error refreshing bookings: $e');
+
+      if (mounted) {
+        setState(() {
+          isRefreshing = false;
+          errorMessage = 'Gagal memperbarui data: ${e.toString()}';
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memperbarui data: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  // Delete booking dari database dan local storage
+  Future<void> _deleteBooking(int index) async {
+    final booking = bookings[index];
+
     // Menggunakan Obx untuk mendapatkan tema terbaru
     Get.dialog(
       Obx(() {
@@ -91,21 +186,63 @@ class _RiwayatScreenState extends State<RiwayatScreen>
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  bookings.removeAt(index);
-                });
-                // Update storage
-                final box = GetStorage();
-                box.write('bookings', bookings);
-
+              onPressed: () async {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Booking berhasil dihapus'),
-                    backgroundColor: colors.primary,
+
+                // Tampilkan loading
+                Get.dialog(
+                  const Center(
+                    child: CircularProgressIndicator(),
                   ),
+                  barrierDismissible: false,
                 );
+
+                try {
+                  bool success = false;
+
+                  // Hapus dari database jika ada ID
+                  if (booking['id'] != null) {
+                    success = await BookingService.deleteBooking(booking['id']);
+                  }
+
+                  if (success || booking['id'] == null) {
+                    // Hapus dari local storage
+                    setState(() {
+                      bookings.removeAt(index);
+                    });
+
+                    // Update local storage
+                    final box = GetStorage();
+                    box.write('bookings', bookings);
+
+                    Get.back(); // Tutup loading dialog
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Booking berhasil dihapus'),
+                        backgroundColor: colors.primary,
+                      ),
+                    );
+                  } else {
+                    Get.back(); // Tutup loading dialog
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Gagal menghapus booking dari server'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  Get.back(); // Tutup loading dialog
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -191,6 +328,36 @@ class _RiwayatScreenState extends State<RiwayatScreen>
     }
   }
 
+  String _getStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Menunggu Konfirmasi';
+      case 'confirmed':
+        return 'Dikonfirmasi';
+      case 'completed':
+        return 'Selesai';
+      case 'cancelled':
+        return 'Dibatalkan';
+      default:
+        return 'Tidak Diketahui';
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'confirmed':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Menggunakan Obx untuk reaktivitas tema otomatis
@@ -215,10 +382,19 @@ class _RiwayatScreenState extends State<RiwayatScreen>
             ),
           ),
           actions: [
-            // Tombol refresh manual jika diperlukan
+            // Tombol refresh manual
             IconButton(
-              onPressed: _loadBookings,
-              icon: const Icon(Icons.refresh),
+              onPressed: isRefreshing ? null : _refreshBookings,
+              icon: isRefreshing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.refresh),
               tooltip: 'Refresh Data',
             ),
           ],
@@ -229,50 +405,107 @@ class _RiwayatScreenState extends State<RiwayatScreen>
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: bookings.isEmpty
-                ? _buildEmptyState(colors)
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${bookings.length} Booking Ditemukan',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            'Terakhir diperbarui: ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: RefreshIndicator(
-                          onRefresh: () async {
-                            _loadBookings();
-                          },
-                          color: colors.primary,
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: bookings.length,
-                            itemBuilder: (context, index) {
-                              final booking = bookings[index];
-                              return _buildHistoryCard(booking, index, colors);
-                            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Error message banner
+                if (errorMessage != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      border: Border.all(color: Colors.orange[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange[700]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            errorMessage!,
+                            style: TextStyle(color: Colors.orange[700]),
                           ),
                         ),
-                      ),
-                    ],
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              errorMessage = null;
+                            });
+                          },
+                          icon: Icon(Icons.close, color: Colors.orange[700]),
+                          iconSize: 20,
+                        ),
+                      ],
+                    ),
                   ),
+
+                // Loading state
+                if (isLoading)
+                  const Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Memuat data booking...'),
+                        ],
+                      ),
+                    ),
+                  )
+                // Empty state
+                else if (bookings.isEmpty)
+                  Expanded(child: _buildEmptyState(colors))
+                // Content
+                else
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${bookings.length} Booking Ditemukan',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              'Terakhir diperbarui: ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _refreshBookings,
+                            color: colors.primary,
+                            child: ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              itemCount: bookings.length,
+                              itemBuilder: (context, index) {
+                                final booking = bookings[index];
+                                return _buildHistoryCard(
+                                    booking, index, colors);
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       );
@@ -281,9 +514,7 @@ class _RiwayatScreenState extends State<RiwayatScreen>
 
   Widget _buildEmptyState(ThemeColors colors) {
     return RefreshIndicator(
-      onRefresh: () async {
-        _loadBookings();
-      },
+      onRefresh: _refreshBookings,
       color: colors.primary,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -318,9 +549,9 @@ class _RiwayatScreenState extends State<RiwayatScreen>
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: _loadBookings,
+                  onPressed: _refreshBookings,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh'),
+                  label: const Text('Muat Ulang'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
@@ -342,6 +573,8 @@ class _RiwayatScreenState extends State<RiwayatScreen>
     final isUpcoming =
         _isUpcoming(booking['date'] ?? '', booking['time'] ?? '');
     final price = _getPrice(booking);
+    final status = booking['status'] ?? 'pending';
+    final paymentStatus = booking['payment_status'] ?? 'unpaid';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -394,6 +627,17 @@ class _RiwayatScreenState extends State<RiwayatScreen>
                             fontSize: 14,
                           ),
                         ),
+                        // Booking code jika ada
+                        if (booking['booking_code'] != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Kode: ${booking['booking_code']}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -446,20 +690,74 @@ class _RiwayatScreenState extends State<RiwayatScreen>
 
               const SizedBox(height: 8),
 
+              // Customer info jika ada
+              if (booking['customer_name'] != null) ...[
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person,
+                      size: 16,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        booking['customer_name'],
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // Status badges
               Row(
                 children: [
-                  Icon(
-                    Icons.payment,
-                    size: 16,
-                    color: Colors.grey[600],
+                  // Status booking
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _getStatusColor(status)),
+                    ),
+                    child: Text(
+                      _getStatusText(status),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _getStatusColor(status),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
+                  // Payment status
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: paymentStatus == 'paid'
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: paymentStatus == 'paid'
+                              ? Colors.green
+                              : Colors.orange),
+                    ),
                     child: Text(
-                      booking['payment'] ?? 'Cash',
+                      paymentStatus == 'paid' ? 'Dibayar' : 'Belum Dibayar',
                       style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: 14,
+                        fontSize: 11,
+                        color: paymentStatus == 'paid'
+                            ? Colors.green
+                            : Colors.orange,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -467,9 +765,9 @@ class _RiwayatScreenState extends State<RiwayatScreen>
               ),
 
               // Indikator booking mendatang
-              if (isUpcoming)
+              if (isUpcoming) ...[
+                const SizedBox(height: 8),
                 Container(
-                  margin: const EdgeInsets.only(top: 12),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -494,9 +792,10 @@ class _RiwayatScreenState extends State<RiwayatScreen>
                     ],
                   ),
                 ),
+              ],
 
               // Tampilkan promo jika ada
-              if (booking['promo_used'] != null) ...[
+              if (booking['promo_title'] != null) ...[
                 const SizedBox(height: 8),
                 Container(
                   padding:
@@ -513,7 +812,7 @@ class _RiwayatScreenState extends State<RiwayatScreen>
                           size: 12, color: Colors.green[700]),
                       const SizedBox(width: 4),
                       Text(
-                        booking['promo_used'],
+                        booking['promo_title'],
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.green[700],
@@ -550,26 +849,42 @@ class _RiwayatScreenState extends State<RiwayatScreen>
               fontWeight: FontWeight.bold,
             ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailItem('Layanan', booking['title'] ?? '-'),
-              if (booking['original_price'] != null &&
-                  booking['final_price'] != null &&
-                  booking['original_price'] != booking['final_price']) ...[
-                _buildDetailItem('Harga Asli', booking['original_price']),
-                if (booking['discount_amount'] != null)
-                  _buildDetailItem('Diskon', booking['discount_amount']),
-                _buildDetailItem('Total Bayar', booking['final_price']),
-              ] else
-                _buildDetailItem('Harga', price),
-              _buildDetailItem('Tanggal', booking['date'] ?? '-'),
-              _buildDetailItem('Waktu', booking['time'] ?? '-'),
-              _buildDetailItem('Pembayaran', booking['payment'] ?? 'Cash'),
-              if (booking['promo_used'] != null)
-                _buildDetailItem('Promo', booking['promo_used']),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (booking['booking_code'] != null)
+                  _buildDetailItem('Kode Booking', booking['booking_code']),
+                _buildDetailItem('Layanan', booking['title'] ?? '-'),
+                _buildDetailItem(
+                    'Nama Pelanggan', booking['customer_name'] ?? '-'),
+                _buildDetailItem(
+                    'No. Telepon', booking['customer_phone'] ?? '-'),
+                if (booking['original_price'] != null &&
+                    booking['final_price'] != null &&
+                    booking['original_price'] != booking['final_price']) ...[
+                  _buildDetailItem('Harga Asli', booking['original_price']),
+                  if (booking['discount_amount'] != null)
+                    _buildDetailItem('Diskon', booking['discount_amount']),
+                  _buildDetailItem('Total Bayar', booking['final_price']),
+                ] else
+                  _buildDetailItem('Harga', price),
+                _buildDetailItem('Tanggal', booking['date'] ?? '-'),
+                _buildDetailItem('Waktu', booking['time'] ?? '-'),
+                _buildDetailItem(
+                    'Status', _getStatusText(booking['status'] ?? 'pending')),
+                _buildDetailItem(
+                    'Status Pembayaran',
+                    (booking['payment_status'] ?? 'unpaid') == 'paid'
+                        ? 'Dibayar'
+                        : 'Belum Dibayar'),
+                if (booking['promo_title'] != null)
+                  _buildDetailItem('Promo', booking['promo_title']),
+                if (booking['notes'] != null && booking['notes'].isNotEmpty)
+                  _buildDetailItem('Catatan', booking['notes']),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -587,12 +902,12 @@ class _RiwayatScreenState extends State<RiwayatScreen>
 
   Widget _buildDetailItem(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 120,
             child: Text(
               '$label:',
               style: const TextStyle(
