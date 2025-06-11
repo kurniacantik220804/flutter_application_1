@@ -8,7 +8,7 @@ import 'admin_dashboard_screen.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'admin_promo_management_screen.dart';
-import 'package:flutter_application_1/screen/riwayat_screen.dart';
+import 'package:flutter_application_1/screen/admin_riwayat_screen.dart';
 import 'package:flutter_application_1/screen/settings_screen.dart';
 import 'package:flutter_application_1/theme/theme_controller.dart';
 import 'package:flutter_application_1/theme/theme_widgets.dart';
@@ -59,7 +59,7 @@ class _AdminMainScreenState extends State<AdminMainScreen>
       const AdminDashboardScreen(),
       const AdminPromoManagementScreen(), // Screen baru untuk admin promo
       const SettingsScreen(),
-      const RiwayatScreen(),
+      const AdminRiwayatScreen(),
     ];
 
     _initializeAnimations();
