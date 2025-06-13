@@ -1,10 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:flutter/material.dart';
 
 class AdminBookingService {
   static final SupabaseClient _supabase = Supabase.instance.client;
-  static final _storage = GetStorage();
 
   // Test koneksi database untuk admin
   static Future<bool> testAdminConnection() async {
@@ -36,12 +34,8 @@ class AdminBookingService {
       print('Raw response type: ${response.runtimeType}');
       print('All bookings response: $response');
       print('Response length: ${response?.length ?? 0}');
-
-      // Jika response null atau kosong, coba troubleshooting
       if (response == null || response.isEmpty) {
         print('No bookings found. Checking table structure...');
-
-        // Test query sederhana untuk debug
         final testResponse = await _supabase.from('bookings').select('count');
         print('Count query result: $testResponse');
 
@@ -53,8 +47,6 @@ class AdminBookingService {
       for (var booking in response) {
         try {
           print('Processing booking: ${booking['id']}');
-
-          // Safely handle null values
           final bookingDate = booking['booking_date'];
           String formattedDate = bookingDate != null
               ? _formatDateForDisplay(bookingDate.toString())
