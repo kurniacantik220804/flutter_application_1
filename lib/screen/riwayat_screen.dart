@@ -392,8 +392,8 @@ class _RiwayatScreenState extends State<RiwayatScreen>
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: Colors.white,
-                      ),
-                    )
+                      ), // CircularProgressIndicator
+                    ) // SizedBox
                   : const Icon(Icons.refresh),
               tooltip: 'Refresh Data',
             ),
@@ -593,18 +593,18 @@ class _RiwayatScreenState extends State<RiwayatScreen>
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: colors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      IconData(booking['icon'] ?? Icons.star.codePoint,
-                          fontFamily: 'MaterialIcons'),
-                      color: colors.primary,
-                      size: 24,
-                    ),
-                  ),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        booking['icon'] != null
+                            ? Icons.star
+                            : Icons.star_border,
+                        color: colors.primary,
+                        size: 24,
+                      )),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
